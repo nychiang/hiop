@@ -61,6 +61,7 @@
 #include <functional>
 
 #include <hiopMatrixSparseTriplet.hpp>
+#include <hiopMatrixRajaSparseTriplet.hpp>
 #include <hiopVectorPar.hpp>
 #include "testBase.hpp"
 
@@ -199,12 +200,21 @@ public:
 
     // Positive largest value
     A.setToConstant(zero);
+    auto* Ad = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(&A);
+    if (Ad)
+      Ad->copyFromDev();
     val[nnz - 1] = one;
+    if (Ad)
+      Ad->copyToDev();
     fail += A.max_abs_value() != one;
 
     // Negative largest value
     A.setToConstant(one);
+    if (Ad)
+      Ad->copyFromDev();
     val[nnz - 1] = -two;
+    if (Ad)
+      Ad->copyToDev();
     fail += A.max_abs_value() != two;
 
     printMessage(fail, __func__);
@@ -224,6 +234,9 @@ public:
       fail++;
 
     val[nnz - 1] = INFINITY;
+    auto* Ad = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(&A);
+    if (Ad)
+      Ad->copyToDev();
     if (A.isfinite()) 
       fail++;
 
@@ -244,7 +257,7 @@ public:
    */
   int tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(
     hiop::hiopMatrixSparse& A,
-    hiop::hiopVectorPar& D,
+    hiop::hiopVector& D,
     hiop::hiopMatrixDense& W,
     local_ordinal_type offset)
   {
@@ -337,7 +350,7 @@ public:
   bool tripletAddMDinvNtransToSymDeMatUTri(
     hiop::hiopMatrixSparse& A,
     hiop::hiopMatrixSparse& B,
-    hiop::hiopVectorPar& D,
+    hiop::hiopVector& D,
     hiop::hiopMatrixDense& W,
     local_ordinal_type i_offset,
     local_ordinal_type j_offset)
@@ -422,6 +435,149 @@ public:
     return fail;
   }
 
+  /*
+   * Block of W += alpha*A
+   *
+   * Precondition: W is square
+   */
+  bool symAddToSymDenseMatrixUpperTriangle(
+    hiop::hiopMatrixDense& W,
+    hiop::hiopMatrixRajaSymSparseTriplet& A, // sym sparse matrix
+    const int rank=0)
+  {
+    const local_ordinal_type N_loc = W.get_local_size_n();
+    const local_ordinal_type A_M = A.m();
+    const local_ordinal_type A_N_loc = A.n();
+    assert(W.m() == W.n());
+    assert(W.m() >= A.m());
+    assert(W.n() >= A.n());
+
+    const local_ordinal_type start_idx_row = 0;
+    const local_ordinal_type start_idx_col = N_loc - A_N_loc;
+    //printf("start_idx_col = %d\n", start_idx_col);
+    const real_type alpha = half,
+          A_val = half,
+          W_val = one;
+    int fail = 0;
+
+    // Check with non-1 alpha
+    A.setToConstant(A_val);
+    W.setToConstant(W_val);
+    A.addToSymDenseMatrixUpperTriangle(start_idx_row, start_idx_col, alpha, W);
+    
+    // get sparsity pattern
+    A.copyFromDev(); // put behind dynamic cast
+    const auto* iRow = A.i_row_host();
+    const auto* jCol = A.j_col_host();
+    auto nnz = A.numberOfNonzeros();
+    //printf("nnz = %d\n", nnz);
+    fail += verifyAnswer(&W,
+      [=] (local_ordinal_type i, local_ordinal_type j) -> real_type
+      {
+        // check if (i, j) within bounds of A
+        // then check if (i, j) within upper triangle of W
+        const bool isUpperTriangle = ( 
+          i>=start_idx_row && i<start_idx_row+A_M &&
+          j>=start_idx_col && j<start_idx_col+A_N_loc &&
+          j >= i);
+        //printf("(%d, %d) %s upper triangular\n", i, j, isUpperTriangle ? "is" : "is not");
+
+        // only nonzero entries in A will be added
+        const bool indexExists = find_unsorted_pair(i, j, iRow, jCol, nnz);
+        real_type ans = (isUpperTriangle && indexExists) ? W_val + A_val*alpha : W_val; // 1 + .5 * .5 = 1.25
+        return ans;
+      });
+
+    printMessage(fail, __func__, rank);
+    return fail;
+  }
+
+  /*
+   * Block of W += alpha*A
+   *
+   * Block of W summed with A is in the trasposed
+   * location of the same call to addToSymDenseMatrixUpperTriangle
+   *
+   * Precondition: W is square
+   */
+  bool symTransAddToSymDenseMatrixUpperTriangle(
+    hiop::hiopMatrixDense& W,
+    hiop::hiopMatrixRajaSymSparseTriplet& A,
+    const int rank=0)
+  {
+    const local_ordinal_type N_loc = W.get_local_size_n();
+    const local_ordinal_type A_M = A.m();
+    const local_ordinal_type A_N_loc = A.n();
+    assert(W.m() == W.n());
+    assert(W.m() >= A.m());
+    assert(W.n() >= A.n());
+
+    const local_ordinal_type start_idx_row = 0;
+    const local_ordinal_type start_idx_col = N_loc - A_M;
+    const real_type alpha = half,
+          A_val = half,
+          W_val = one;
+
+    //printf("row start = %d, col start = %d\n", start_idx_row, start_idx_col);
+    A.setToConstant(A_val);
+    W.setToConstant(W_val);
+
+    A.transAddToSymDenseMatrixUpperTriangle(start_idx_row, start_idx_col, alpha, W);
+
+    // get sparsity pattern
+    A.copyFromDev(); // put behind dynamic cast
+    const auto* iRow = A.i_row_host();
+    const auto* jCol = A.j_col_host();
+    auto nnz = A.numberOfNonzeros();
+    const int fail = verifyAnswer(&W,
+      [=] (local_ordinal_type i, local_ordinal_type j) -> real_type
+      {
+        const bool isTransUpperTriangle = (
+          i>=start_idx_row && i<start_idx_row+A_N_loc && // iCol is in A
+          j>=start_idx_col && j<start_idx_col+A_M &&     // jRow is in A
+          j <= i);                                       // (i, j) are in upper triangle of W^T
+
+        const bool indexExists = find_unsorted_pair(j, i, iRow, jCol, nnz);
+        return (isTransUpperTriangle && indexExists) ? W_val + A_val*alpha : W_val;
+      });
+
+    printMessage(fail, __func__, rank);
+    return fail;
+  }
+
+  bool symStartingAtAddSubDiagonalToStartingAt(
+    hiop::hiopVector& W,
+    hiop::hiopMatrixRajaSymSparseTriplet& A,
+    const int rank = 0)
+  {
+    assert(W.get_size() == A.m()); // A is square
+    
+    const auto start_src_idx = 0;
+    const auto start_dest_idx = 0;
+    const auto num_elems = W.get_size();
+    const auto A_val = half;
+    const auto W_val = one;
+    const auto alpha = half;
+
+    A.setToConstant(A_val);
+    W.setToConstant(W_val);
+    A.startingAtAddSubDiagonalToStartingAt(start_src_idx, alpha, W, start_dest_idx, num_elems);
+    A.copyFromDev();
+
+    const auto* iRow = A.i_row_host();
+    const auto* jCol = A.j_col_host();
+    auto nnz = A.numberOfNonzeros();
+    const auto fail = verifyAnswer(&W, 
+      [=](local_ordinal_type i) -> real_type
+      {
+        const bool indexExists = find_unsorted_pair(i, i, iRow, jCol, nnz);
+        return (indexExists) ? (W_val + A_val * alpha) : W_val;
+      });
+    
+    printMessage(fail, __func__, rank);
+    return fail;
+  }
+
 private:
   // TODO: The sparse matrix is not distributed - all is local. 
   // Rename functions to remove redundant "local" from their names?
@@ -445,6 +601,19 @@ private:
       std::function<real_type(local_ordinal_type)> expect) = 0;
   virtual local_ordinal_type* numNonzerosPerRow(hiop::hiopMatrixSparse* mat) = 0;
   virtual local_ordinal_type* numNonzerosPerCol(hiop::hiopMatrixSparse* mat) = 0;
+
+  // linearly scans an unsorted array
+  static bool find_unsorted_pair(int valA, int valB, const int* arrA, const int* arrB, size_t arrslen)
+  {
+    for (int i = 0; i < arrslen; i++)
+    {
+      if (arrA[i] == valA && arrB[i] == valB)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
 };
 
 }} // namespace hiop::tests

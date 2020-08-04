@@ -47,18 +47,15 @@
 // product endorsement purposes.
 
 /**
- * @file matrixTestsSparseTriplet.hpp
+ * @file MatrixTestsRajaSparseTriplet.hpp
  *
- * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>,  PNNL
- * @author Slaven Peles <slaven.peles@pnnl.gov>, PNNL
- * @author Cameron Rutherford <robert.rutherford@pnnl.gov>, PNNL
+ * @author Jake Ryan <jake.ryan@pnnl.gov>,  PNNL
  * 
  */
 
 #pragma once
 
-#include <hiopMatrixSparseTriplet.hpp>
-#include <hiopMatrixRajaSparseTriplet.hpp>
+//#include <hiopMatrixRajaSparseTriplet.hpp>
 #include "matrixTestsSparse.hpp"
 
 namespace hiop { namespace tests {
@@ -70,11 +67,11 @@ namespace hiop { namespace tests {
  * Any tests that would make calls to non-implemented/needed functions are not implemented.
  * 
 */
-class MatrixTestsSparseTriplet : public MatrixTestsSparse
+class MatrixTestsRajaSparseTriplet : public MatrixTestsSparse
 {
 public:
-  MatrixTestsSparseTriplet() {}
-  virtual ~MatrixTestsSparseTriplet(){}
+  MatrixTestsRajaSparseTriplet() {}
+  virtual ~MatrixTestsRajaSparseTriplet(){}
 
 
 private:

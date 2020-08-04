@@ -47,7 +47,9 @@
 // product endorsement purposes.
 
 #include <hiopVectorPar.hpp>
+#include <hiopVectorRajaPar.hpp>
 #include <hiopMatrixDenseRowMajor.hpp>
+#include <hiopMatrixRajaDense.hpp>
 #include <hiopMatrixSparseTriplet.hpp>
 
 #include "hiopLinAlgFactory.hpp"
@@ -60,12 +62,34 @@ using namespace hiop;
  * @todo For now this is just a wrapper for hiopVectorPar constructor.
  * Need to add options for creating different vectors.
  */
+// hiopVector* LinearAlgebraFactory::createVector(
+//   const long long& glob_n
+//   //const std::string mem_space
+//   )
+// {
+//   if(mem_space_ == "DEFAULT")
+//   {
+//     return new hiopVectorPar(glob_n);
+//   }
+//   else
+//   {
+//    return new hiopVectorRajaPar(glob_n, mem_space_);
+//   }
+// }
+
 hiopVector* LinearAlgebraFactory::createVector(
   const long long& glob_n,
   long long* col_part,
   MPI_Comm comm)
 {
-  return new hiopVectorPar(glob_n, col_part, comm);
+  if(mem_space_ == "DEFAULT")
+  {
+    return new hiopVectorPar(glob_n, col_part, comm);
+  }
+  else
+  {
+   return new hiopVectorRajaPar(glob_n, mem_space_, col_part, comm);
+  }
 }
 
 /**
@@ -81,7 +105,15 @@ hiopMatrixDense* LinearAlgebraFactory::createMatrixDense(
   MPI_Comm comm,
   const long long& m_max_alloc)
 {
-  return new hiopMatrixDenseRowMajor(m, glob_n, col_part, comm, m_max_alloc);
+  if(mem_space_ == "DEFAULT")
+  {
+    return new hiopMatrixDenseRowMajor(m, glob_n, col_part, comm, m_max_alloc);
+  }
+  else
+  {
+    return new hiopMatrixRajaDense(m, glob_n, mem_space_, col_part, comm, m_max_alloc);
+  }
+  
 }
 
 /**
@@ -92,3 +124,5 @@ hiopMatrixSparse* LinearAlgebraFactory::createMatrixSparse(int rows, int cols, i
 {
   return new hiopMatrixSparseTriplet(rows, cols, nnz);
 }
+
+std::string LinearAlgebraFactory::mem_space_ = "DEFAULT";

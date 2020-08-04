@@ -47,6 +47,7 @@
 // product endorsement purposes.
 #pragma once
 
+#include <string>
 #include <hiopMPI.hpp>
 #include <hiopVector.hpp>
 #include <hiopMatrixDense.hpp>
@@ -67,7 +68,12 @@ public:
   static hiopVector* createVector(
     const long long& glob_n,
     long long* col_part = NULL,
-    MPI_Comm comm = MPI_COMM_SELF);
+    MPI_Comm comm = MPI_COMM_SELF); 
+
+  // static hiopVector* createVector(
+  //   const long long& glob_n
+  //   //const std::string mem_space = "DEFAULT"
+  //   ); 
 
   static hiopMatrixDense* createMatrixDense(
     const long long& m,
@@ -77,6 +83,14 @@ public:
     const long long& m_max_alloc = -1);
 
   static hiopMatrixSparse* createMatrixSparse(int rows, int cols, int nnz);
+
+  inline static void set_mem_space(const std::string mem_space)
+  {
+    mem_space_ = mem_space;
+  }
+
+private:
+  static std::string mem_space_;
 };
 
 } // namespace hiop

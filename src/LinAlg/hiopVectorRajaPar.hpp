@@ -58,9 +58,8 @@
 #define HIOP_VECTOR_RAJA_PAR
 
 #include <cstdio>
-
-#include <umpire/Allocator.hpp>
-#include <umpire/ResourceManager.hpp>
+#include <string>
+#include <cassert>
 
 #include <hiopMPI.hpp>
 #include "hiopVector.hpp"
@@ -72,7 +71,7 @@ namespace hiop
 class hiopVectorRajaPar : public hiopVector
 {
 public:
-  hiopVectorRajaPar(const long long& glob_n, long long* col_part=NULL, MPI_Comm comm=MPI_COMM_SELF);
+  hiopVectorRajaPar(const long long& glob_n, std::string mem_space, long long* col_part=NULL, MPI_Comm comm=MPI_COMM_SELF);
   virtual ~hiopVectorRajaPar();
 
   virtual void setToZero();
@@ -146,20 +145,19 @@ public:
 
   /* more accessers */
   inline long long get_local_size() const { return n_local_; }
-  inline double* local_data() { return data_; }
-  inline const double* local_data_const() const { return data_; }
-  inline double* local_data_dev() { return data_dev_; }
-  inline const double* local_data_dev_const() const { return data_dev_; }
+  inline double* local_data_host() { return data_host_; }
+  inline const double* local_data_host_const() const { return data_host_; }
+  inline double* local_data() { return data_dev_; }
+  inline const double* local_data_const() const { return data_dev_; }
   inline MPI_Comm get_mpi_comm() const { return comm_; }
 
   void copyToDev();
   void copyFromDev();
 
 private:
-  umpire::Allocator hostalloc_;
-  umpire::Allocator devalloc_;
+  std::string mem_space_;
   MPI_Comm comm_;
-  double* data_;
+  double* data_host_;
   double* data_dev_;
   long long glob_il_, glob_iu_;
   long long n_local_;

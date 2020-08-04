@@ -195,7 +195,7 @@ public:
   bool vectorCopyFromStarting(
       hiop::hiopVector& x,
       hiop::hiopVector& from,
-      const int rank)
+      const int rank=0)
   {
     int fail = 0;
     const local_ordinal_type Nx = getLocalSize(&x);
@@ -246,7 +246,7 @@ public:
   bool vectorStartingAtCopyFromStartingAt(
       hiop::hiopVector& dest,
       hiop::hiopVector& src,
-      const int rank)
+      const int rank=0)
   {
     const local_ordinal_type Ndest = getLocalSize(&dest);
     const local_ordinal_type Nsrc = getLocalSize(&src);
@@ -309,7 +309,7 @@ public:
   bool vectorCopyToStarting(
       hiop::hiopVector& to,
       hiop::hiopVector& from,
-      const int rank)
+      const int rank=0)
   {
     const local_ordinal_type dest_size = getLocalSize(&to);
     const local_ordinal_type src_size = getLocalSize(&from);
@@ -353,7 +353,7 @@ public:
   bool vectorStartingAtCopyToStartingAt(
       hiop::hiopVector& to,
       hiop::hiopVector& from,
-      const int rank)
+      const int rank=0)
   {
     const local_ordinal_type dest_size = getLocalSize(&to);
     const local_ordinal_type src_size = getLocalSize(&from);

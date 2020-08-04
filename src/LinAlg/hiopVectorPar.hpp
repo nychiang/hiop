@@ -48,6 +48,7 @@
 
 #pragma once
 
+#include <string>
 #include <hiopMPI.hpp>
 #include "hiopVector.hpp"
 

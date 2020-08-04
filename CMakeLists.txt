@@ -172,6 +172,10 @@ if(NOT DEFINED LAPACK_LIBRARIES)
   message(STATUS "Found LAPACK libraries: ${LAPACK_LIBRARIES}")
 endif(NOT DEFINED LAPACK_LIBRARIES)
 
+if(HIOP_USE_UMPIRE)
+  target_link_libraries(hiop_math INTERFACE umpire RAJA)
+endif()
+
 #
 # extended precision lapack based on xblas testing example
 #
