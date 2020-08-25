@@ -1,4 +1,4 @@
-#include "nlpMDSForm_ex4.hpp"
+#include "nlpMDSForm_raja_ex4.hpp"
 #include "hiopNlpFormulation.hpp"
 #include "hiopAlgFilterIPM.hpp"
 
@@ -8,6 +8,30 @@
 
 #include <cstdlib>
 #include <string>
+
+#include <umpire/Allocator.hpp>
+#include <umpire/ResourceManager.hpp>
+#include <RAJA/RAJA.hpp>
+
+#ifdef HIOP_USE_GPU
+#define MEM_SPACE_HOST "HOST"
+#define MEM_SPACE_DEV "HOST"
+using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
+using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
+using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
+#ifndef RAJA_LAMBDA
+#define RAJA_LAMBDA [=]
+#endif
+#else
+#define MEM_SPACE_HOST "HOST"
+#define MEM_SPACE_DEV "HOST"
+using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
+using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
+using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
+#ifndef RAJA_LAMBDA
+#define RAJA_LAMBDA [=]
+#endif
+#endif
 
 using namespace hiop;
 
@@ -94,6 +118,10 @@ int main(int argc, char **argv)
   magma_init();
 #endif
 
+  auto& resmgr = umpire::ResourceManager::getInstance();
+  umpire::Allocator hostalloc  = resmgr.getAllocator(MEM_SPACE_HOST);
+  umpire::Allocator devalloc  = resmgr.getAllocator(MEM_SPACE_DEV);
+
   bool selfCheck, one_call_cons;
   long long n_sp, n_de;
   if(!parse_arguments(argc, argv, selfCheck, n_sp, n_de, one_call_cons)) {
@@ -149,10 +177,10 @@ int main(int argc, char **argv)
   long long n_vars, n_cons;
   my_nlp->get_prob_sizes(n_vars, n_cons);
 
-  double x[n_vars];
-  double zl[n_vars];
-  double zu[n_vars];
-  double lambdas[n_cons];
+  auto* x = static_cast<double*>(hostalloc.allocate(n_vars * sizeof(double)));
+  auto* zl = static_cast<double*>(hostalloc.allocate(n_vars * sizeof(double)));
+  auto* zu = static_cast<double*>(hostalloc.allocate(n_vars * sizeof(double)));
+  auto* lambdas = static_cast<double*>(hostalloc.allocate(n_cons * sizeof(double)));
 
   solver.getSolution(x);
   solver.getDualSolutions(zl, zu, lambdas);
@@ -194,9 +222,8 @@ int main(int argc, char **argv)
       printf("Optimal objective: %22.14e. Solver status: %d\n", obj_value, status);
     }
   }
-
 #endif
-
+  
   delete my_nlp;
   
 #ifdef HIOP_USE_MAGMA
