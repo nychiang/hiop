@@ -151,7 +151,7 @@ int MatrixTestsRajaSparseTriplet::getLocalSize(const hiop::hiopVector* x)
  *
  */
 [[nodiscard]]
-int MatrixTestsRajaSparseTriplet::verifyAnswer(hiop::hiopMatrix* A, const double answer)
+int MatrixTestsRajaSparseTriplet::verifyAnswer(hiop::hiopMatrixSparse* A, const double answer)
 {
   if(A == nullptr)
     return 1;
@@ -177,7 +177,7 @@ int MatrixTestsRajaSparseTriplet::verifyAnswer(hiop::hiopMatrix* A, const double
  */
   [[nodiscard]]
 int MatrixTestsRajaSparseTriplet::verifyAnswer(
-    hiop::hiopMatrix* Amat,
+    hiop::hiopMatrixDense* Amat,
     std::function<real_type(local_ordinal_type, local_ordinal_type)> expect)
 {
   auto* A = dynamic_cast<hiop::hiopMatrixRajaDense*>(Amat);
@@ -279,6 +279,99 @@ local_ordinal_type* MatrixTestsRajaSparseTriplet::numNonzerosPerCol(hiop::hiopMa
     sparsity_pattern[jCol[i]]++;
   }
   return sparsity_pattern;
+}
+
+void MatrixTestsRajaSparseTriplet::initializeSparseMat(
+    hiop::hiopMatrixSparse* mat,
+    local_ordinal_type entries_per_row)
+{
+  auto* A = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(mat);
+  local_ordinal_type * iRow = A->i_row_host();
+  local_ordinal_type * jCol = A->j_col_host();
+  double * val = A->M_host();
+
+  local_ordinal_type m = A->m();
+  local_ordinal_type n = A->n();
+
+  assert(A->numberOfNonzeros() == m * entries_per_row && "Matrix initialized with insufficent number of non-zero entries");
+  A->copyFromDev();
+  for(local_ordinal_type row = 0, col = 0, i = 0; row < m; row++, col = 0) 
+  {
+    for(local_ordinal_type j=0; j<entries_per_row-1; i++, j++, col += n / entries_per_row)
+    {
+      iRow[i] = row;
+      jCol[i] = col;
+      val[i] = one;
+    }
+
+    iRow[i] = row;
+    jCol[i] = n-1;
+    val[i++] = one;
+    
+  }
+  A->copyToDev();
+}
+
+void MatrixTestsRajaSparseTriplet::initializeSymSparseMat(
+    hiop::hiopMatrixSparse* mat)
+{
+  auto* A = dynamic_cast<hiop::hiopMatrixRajaSymSparseTriplet*>(mat);
+  local_ordinal_type* iRow = A->i_row_host();
+  local_ordinal_type* jCol = A->j_col_host();
+  double* val = A->M_host();
+  const auto nnz = A->numberOfNonzeros();
+  int nonZerosUsed = 0;
+
+  local_ordinal_type m = A->m();
+  local_ordinal_type n = A->n();
+
+  // set up to nnz upper triangular entries to one
+  A->copyFromDev();
+  for(auto i = 0; i < m; i++) 
+  {
+    for(auto j = i; j < n && nonZerosUsed < nnz; j++, nonZerosUsed++)
+    {
+      iRow[nonZerosUsed] = i;
+      jCol[nonZerosUsed] = j;
+      val[nonZerosUsed] = one;
+    }
+  }
+  A->copyToDev();
+}
+
+/**
+ * @brief Copies data to device if needed
+ */
+void MatrixTestsRajaSparseTriplet::maybeCopyToDev(hiop::hiopMatrixSparse* mat)
+{
+  if (auto* A = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(mat))
+  {
+    A->copyToDev();
+  }
+  else if (auto* A = dynamic_cast<hiop::hiopMatrixRajaSymSparseTriplet*>(mat))
+  {
+    A->copyToDev();
+  }
+  else // do nothing, raja sparse mat class was not passed in
+  { }
+}
+
+/**
+ * @brief Copies data from device if needed
+ * @see MatrixTestsRajaSparseTriplet::maybeCopyToDev
+ */
+void MatrixTestsRajaSparseTriplet::maybeCopyFromDev(hiop::hiopMatrixSparse* mat)
+{
+  if (auto* A = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(mat))
+  {
+    A->copyFromDev();
+  }
+  else if (auto* A = dynamic_cast<hiop::hiopMatrixRajaSymSparseTriplet*>(mat))
+  {
+    A->copyFromDev();
+  }
+  else // do nothing, raja sparse mat class was not passed in
+  { }
 }
 
 

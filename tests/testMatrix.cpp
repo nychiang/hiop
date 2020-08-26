@@ -56,6 +56,7 @@
 #include <iostream>
 #include <cassert>
 
+#include <hiopOptions.hpp>
 #include <hiopMPI.hpp>
 #include <hiopLinAlgFactory.hpp>
 #include <hiopVectorPar.hpp>
@@ -79,12 +80,13 @@ int main(int argc, char** argv)
   comm = MPI_COMM_WORLD;
   err = MPI_Comm_rank(comm,&rank);     assert(MPI_SUCCESS==err);
   err = MPI_Comm_size(comm,&numRanks); assert(MPI_SUCCESS==err);
-  (void) err; // Resolves -Wunused-but-set-variable
-  if(0 == rank)
+  if(0 == rank && MPI_SUCCESS == err)
     printf("Support for MPI is enabled\n");
 #endif
   if(rank == 0 && argc > 1)
     std::cout << "Executable " << argv[0] << " doesn't take any input.";
+
+  hiop::hiopOptions options;
 
   global_ordinal_type M_local = 50;
   global_ordinal_type K_local = 2 * M_local;
@@ -192,13 +194,14 @@ int main(int argc, char** argv)
     fail += test.matrixGetRow(A_mxn, x_n, rank);
   }
 
-  // Test RAJA matrix
+  // Test RAJA dense matrix
   {
     if (rank==0)
       std::cout << "\nTesting hiopMatrixRajaDense ...\n";
 
-    std::string mem_space = "DEVICE";
-    hiop::LinearAlgebraFactory::set_mem_space(mem_space);
+    options.SetStringValue("mem_space", "device");
+    hiop::LinearAlgebraFactory::set_mem_space(options.GetString("mem_space"));
+    std::string mem_space = hiop::LinearAlgebraFactory::get_mem_space();
 
     // Matrix dimensions denoted by subscript
     // Distributed matrices (only distributed by columns):
