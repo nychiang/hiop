@@ -57,6 +57,7 @@
 #include <assert.h>
 
 // This header contains HiOp's MPI definitions
+#include <hiopOptions.hpp>
 #include <hiopLinAlgFactory.hpp>
 #include <hiopVectorPar.hpp>
 #include <hiopVectorRajaPar.hpp>
@@ -83,13 +84,14 @@ int main(int argc, char** argv)
 
 #ifdef HIOP_USE_MPI
   int err;
-  err = MPI_Init(&argc, &argv);         assert(MPI_SUCCESS == err);
+  err  = MPI_Init(&argc, &argv);         assert(MPI_SUCCESS == err);
   comm = MPI_COMM_WORLD;
-  err = MPI_Comm_rank(comm, &rank);     assert(MPI_SUCCESS == err);
-  err = MPI_Comm_size(comm, &numRanks); assert(MPI_SUCCESS == err);
-  if(0 == rank)
+  err  = MPI_Comm_rank(comm, &rank);     assert(MPI_SUCCESS == err);
+  err  = MPI_Comm_size(comm, &numRanks); assert(MPI_SUCCESS == err);
+  if(0 == rank && MPI_SUCCESS == err)
     std::cout << "Running MPI enabled tests ...\n";
 #endif
+  hiop::hiopOptions options;
 
   global_ordinal_type Nlocal = 1000;
   global_ordinal_type Mlocal = 500;
@@ -110,7 +112,7 @@ int main(int argc, char** argv)
 
   // Test parallel vector
   {
-    //hiop::LinearAlgebraFactory::set_mem_space("DEFAULT");
+    hiop::LinearAlgebraFactory::set_mem_space(options.GetString("mem_space"));
     hiop::hiopVectorPar x(Nglobal, n_partition, comm);
     hiop::hiopVectorPar y(Nglobal, n_partition, comm);
     hiop::hiopVectorPar z(Nglobal, n_partition, comm);
@@ -178,13 +180,14 @@ int main(int argc, char** argv)
     fail += test.vectorIsfinite(x, rank);
   }
 
-  // Test RAJA vector
+  // Test MPI+RAJA vector
   {
     if (rank == 0)
       std::cout << "\nTesting HiOp RAJA vector:\n";
 
-    std::string mem_space = "DEVICE";
-    hiop::LinearAlgebraFactory::set_mem_space(mem_space);
+    options.SetStringValue("mem_space", "device");
+    hiop::LinearAlgebraFactory::set_mem_space(options.GetString("mem_space"));
+    std::string mem_space = hiop::LinearAlgebraFactory::get_mem_space();
 
     hiop::hiopVectorRajaPar x(Nglobal, mem_space, n_partition, comm);
     hiop::hiopVectorRajaPar y(Nglobal, mem_space, n_partition, comm);

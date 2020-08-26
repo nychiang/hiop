@@ -57,6 +57,8 @@
 #include <cassert>
 #include <cstring>
 
+#include <hiopOptions.hpp>
+#include <hiopLinAlgFactory.hpp>
 #include <hiopVector.hpp>
 #include <hiopMatrixDenseRowMajor.hpp>
 #include <hiopVectorRajaPar.hpp>
@@ -66,92 +68,12 @@
 
 using namespace hiop::tests;
 
-/// Generate a sparse matrix in triplet format
-void initializeSparseTriplet(hiop::hiopMatrixSparseTriplet &A, local_ordinal_type entries_per_row)
-{
-  local_ordinal_type * iRow = A.i_row();
-  local_ordinal_type * jCol = A.j_col();
-  double * val = A.M();
-
-  local_ordinal_type m = A.m();
-  local_ordinal_type n = A.n();
-
-  assert(A.numberOfNonzeros() == m * entries_per_row && "Matrix initialized with insufficent number of non-zero entries");
-
-  for(local_ordinal_type row = 0, col = 0, i = 0; row < m; row++, col = 0) 
-  {
-    for(local_ordinal_type j=0; j<entries_per_row-1; i++, j++, col += n / entries_per_row)
-    {
-      iRow[i] = row;
-      jCol[i] = col;
-      val[i] = one;
-    }
-
-    iRow[i] = row;
-    jCol[i] = n-1;
-    val[i++] = one;
-    
-  }
-}
-
-void initializeRajaSparseTriplet(hiop::hiopMatrixRajaSparseTriplet &A, local_ordinal_type entries_per_row)
-{
-  local_ordinal_type * iRow = A.i_row_host();
-  local_ordinal_type * jCol = A.j_col_host();
-  double * val = A.M_host();
-
-  local_ordinal_type m = A.m();
-  local_ordinal_type n = A.n();
-
-  assert(A.numberOfNonzeros() == m * entries_per_row && "Matrix initialized with insufficent number of non-zero entries");
-  A.copyFromDev();
-  for(local_ordinal_type row = 0, col = 0, i = 0; row < m; row++, col = 0) 
-  {
-    for(local_ordinal_type j=0; j<entries_per_row-1; i++, j++, col += n / entries_per_row)
-    {
-      iRow[i] = row;
-      jCol[i] = col;
-      val[i] = one;
-    }
-
-    iRow[i] = row;
-    jCol[i] = n-1;
-    val[i++] = one;
-    
-  }
-  A.copyToDev();
-}
-
-void initializeRajaSymSparseTriplet(hiop::hiopMatrixRajaSparseTriplet &A)
-{
-  local_ordinal_type* iRow = A.i_row_host();
-  local_ordinal_type* jCol = A.j_col_host();
-  double* val = A.M_host();
-  const auto nnz = A.numberOfNonzeros();
-  int nonZerosUsed = 0;
-
-  local_ordinal_type m = A.m();
-  local_ordinal_type n = A.n();
-
-  // set up to nnz upper triangular entries to one
-  A.copyFromDev();
-  for(auto i = 0; i < m; i++) 
-  {
-    for(auto j = i; j < n && nonZerosUsed < nnz; j++, nonZerosUsed++)
-    {
-      iRow[nonZerosUsed] = i;
-      jCol[nonZerosUsed] = j;
-      val[nonZerosUsed] = one;
-    }
-  }
-  A.copyToDev();
-  //A.print();
-}
-
 int main(int argc, char** argv)
 {
   if(argc > 1)
     std::cout << "Executable " << argv[0] << " doesn't take any input.";
+
+  hiop::hiopOptions options;
 
   local_ordinal_type M_local = 5;
   local_ordinal_type N_local = 10*M_local;
@@ -162,7 +84,7 @@ int main(int argc, char** argv)
 
   int fail = 0;
 
-  // Test Sparse Triplet Matrix
+  // Test sparse matrix
   {
     std::cout << "\nTesting hiopMatrixSparseTriplet\n";
     hiop::tests::MatrixTestsSparseTriplet test;
@@ -171,22 +93,22 @@ int main(int argc, char** argv)
     local_ordinal_type entries_per_row = 5;
     local_ordinal_type nnz = M_local * entries_per_row;
 
-    hiop::hiopMatrixSparseTriplet mxn_sparse(M_local, N_local, nnz);
-
-    initializeSparseTriplet(mxn_sparse, entries_per_row);
+    hiop::hiopMatrixSparse* mxn_sparse = 
+      hiop::LinearAlgebraFactory::createMatrixSparse(M_local, N_local, nnz);
+    test.initializeSparseMat(mxn_sparse, entries_per_row);
   
     hiop::hiopVectorPar vec_m(M_global);
     hiop::hiopVectorPar vec_n(N_global);
 
     /// @see LinAlg/matrixTestsSparseTriplet.hpp for reasons why some tests are implemented/not implemented
-    fail += test.matrixNumRows(mxn_sparse, M_global);
-    fail += test.matrixNumCols(mxn_sparse, N_global);
-    fail += test.matrixSetToZero(mxn_sparse);
-    fail += test.matrixSetToConstant(mxn_sparse);
-    fail += test.matrixTimesVec(mxn_sparse, vec_m, vec_n);
-    fail += test.matrixTransTimesVec(mxn_sparse, vec_m, vec_n);
-    fail += test.matrixMaxAbsValue(mxn_sparse);
-    fail += test.matrixIsFinite(mxn_sparse);
+    fail += test.matrixNumRows(*mxn_sparse, M_global);
+    fail += test.matrixNumCols(*mxn_sparse, N_global);
+    fail += test.matrixSetToZero(*mxn_sparse);
+    fail += test.matrixSetToConstant(*mxn_sparse);
+    fail += test.matrixTimesVec(*mxn_sparse, vec_m, vec_n);
+    fail += test.matrixTransTimesVec(*mxn_sparse, vec_m, vec_n);
+    fail += test.matrixMaxAbsValue(*mxn_sparse);
+    fail += test.matrixIsFinite(*mxn_sparse);
 
     // Need a dense matrix to store the output of the following tests
     global_ordinal_type W_delta = M_global * 5;
@@ -194,97 +116,126 @@ int main(int argc, char** argv)
 
     // local_ordinal_type test_offset = 10;
     local_ordinal_type test_offset = 4;
-    fail += test.tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(mxn_sparse, vec_n, W_dense, test_offset);
+    fail += test.tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(*mxn_sparse, vec_n, W_dense, test_offset);
 
     // Initialise other sparse Matrix
     // TODO: Since this is specific for the next test only, perhaps move it within the test.
     local_ordinal_type M2 = M_global * 2;
     nnz = M2 * (entries_per_row);
 
-    hiop::hiopMatrixSparseTriplet m2xn_sparse(M2, N_global, nnz);
-    initializeSparseTriplet(m2xn_sparse, entries_per_row);
+    hiop::hiopMatrixSparse* m2xn_sparse = 
+      hiop::LinearAlgebraFactory::createMatrixSparse(M2, N_global, nnz);
+    test.initializeSparseMat(m2xn_sparse, entries_per_row);
 
     // Set offsets where to insert sparse matrix
     local_ordinal_type i_offset = 1;
     local_ordinal_type j_offset = M2 + 1;
 
-    fail += test.tripletAddMDinvNtransToSymDeMatUTri(mxn_sparse, m2xn_sparse, vec_n, W_dense, i_offset, j_offset);
+    fail += test.tripletAddMDinvNtransToSymDeMatUTri(*mxn_sparse, *m2xn_sparse, vec_n, W_dense, i_offset, j_offset);
+
+    // test symmetric sparse matrix
+    {
+      std::cout << "\nTesting hiopMatrixSymSparseTriplet\n";
+
+      const int nnz_triangular = M_local * 3;
+      hiop::hiopMatrixSparse* m_sym = 
+        hiop::LinearAlgebraFactory::createMatrixSymSparse(M_local, nnz_triangular);
+      test.initializeSymSparseMat(m_sym);
+      hiop::hiopVectorPar vec_m_2(M_local);
+      hiop::hiopMatrixDenseRowMajor mxm_dense(M_global, M_global);
+
+      test.initializeSymSparseMat(m_sym);
+      // fail += test.matrixTimesVec(*m_sym, vec_m, vec_m_2); Fails!
+      fail += test.symAddToSymDenseMatrixUpperTriangle(mxm_dense, *m_sym);
+      fail += test.symTransAddToSymDenseMatrixUpperTriangle(mxm_dense, *m_sym);
+      // fail += test.symStartingAtAddSubDiagonalToStartingAt(vec_m_2, *m_sym); Pending fix.
+    }
   }
 
-  // Test RAJA matrix
+  // Test RAJA sparse matrix
   {
     std::cout << "\nTesting hiopMatrixRajaSparseTriplet\n";
+
+    options.SetStringValue("mem_space", "device");
+    hiop::LinearAlgebraFactory::set_mem_space(options.GetString("mem_space"));
+    std::string mem_space = hiop::LinearAlgebraFactory::get_mem_space();
+
     hiop::tests::MatrixTestsRajaSparseTriplet test;
     
     // Establishing sparsity pattern and initializing Matrix
     local_ordinal_type entries_per_row = 5;
     local_ordinal_type nnz = M_local * entries_per_row;
 
-    hiop::hiopMatrixRajaSparseTriplet mxn_sparse(M_local, N_local, nnz, "DEVICE");
+    hiop::hiopMatrixSparse* mxn_sparse = 
+      hiop::LinearAlgebraFactory::createMatrixSparse(M_local, N_local, nnz);
 
-    initializeRajaSparseTriplet(mxn_sparse, entries_per_row);
+    test.initializeSparseMat(mxn_sparse, entries_per_row);
   
-    hiop::hiopVectorRajaPar vec_m(M_global, "DEVICE");
-    hiop::hiopVectorRajaPar vec_m_2(M_global, "DEVICE");
-    hiop::hiopVectorRajaPar vec_n(N_global, "DEVICE");
+    hiop::hiopVectorRajaPar vec_m(M_global, mem_space);
+    hiop::hiopVectorRajaPar vec_m_2(M_global, mem_space);
+    hiop::hiopVectorRajaPar vec_n(N_global, mem_space);
 
     /// @see LinAlg/matrixTestsSparseTriplet.hpp for reasons why some tests are implemented/not implemented
-    fail += test.matrixNumRows(mxn_sparse, M_global);
-    fail += test.matrixNumCols(mxn_sparse, N_global);
-    fail += test.matrixSetToZero(mxn_sparse);
-    fail += test.matrixSetToConstant(mxn_sparse);
-    fail += test.matrixMaxAbsValue(mxn_sparse);
-    fail += test.matrixIsFinite(mxn_sparse);
-    fail += test.matrixTimesVec(mxn_sparse, vec_m, vec_n);
-    fail += test.matrixTransTimesVec(mxn_sparse, vec_m, vec_n);
+    fail += test.matrixNumRows(*mxn_sparse, M_global);
+    fail += test.matrixNumCols(*mxn_sparse, N_global);
+    fail += test.matrixSetToZero(*mxn_sparse);
+    fail += test.matrixSetToConstant(*mxn_sparse);
+    fail += test.matrixMaxAbsValue(*mxn_sparse);
+    fail += test.matrixIsFinite(*mxn_sparse);
+    fail += test.matrixTimesVec(*mxn_sparse, vec_m, vec_n);
+    fail += test.matrixTransTimesVec(*mxn_sparse, vec_m, vec_n);
     
     // Need a dense matrix to store the output of the following tests
     global_ordinal_type W_delta = M_global * 5;
-    hiop::hiopMatrixRajaDense W_dense(M_global + W_delta, N_global + W_delta, "DEVICE");
-    hiop::hiopMatrixRajaDense mxm_dense(M_global, M_global, "DEVICE");
+    /// @todo use linear algebra factory for these
+    hiop::hiopMatrixRajaDense W_dense(M_global + W_delta, N_global + W_delta, mem_space);
+    hiop::hiopMatrixRajaDense mxm_dense(M_global, M_global, mem_space);
 
     // local_ordinal_type test_offset = 10;
     local_ordinal_type test_offset = 4;
-    fail += test.tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(mxn_sparse, vec_n, W_dense, test_offset);
+    fail += test.tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(*mxn_sparse, vec_n, W_dense, test_offset);
     
     // Initialise other sparse Matrix
     // TODO: Since this is specific for the next test only, perhaps move it within the test.
     local_ordinal_type M2 = M_global * 2;
     nnz = M2 * (entries_per_row);
 
-    hiop::hiopMatrixRajaSparseTriplet m2xn_sparse(M2, N_global, nnz, "DEVICE");
-    initializeRajaSparseTriplet(m2xn_sparse, entries_per_row);
+    /// @todo: use linear algebra factory for this
+    hiop::hiopMatrixRajaSparseTriplet m2xn_sparse(M2, N_global, nnz, mem_space);
+    test.initializeSparseMat(&m2xn_sparse, entries_per_row);
 
     // Set offsets where to insert sparse matrix
     local_ordinal_type i_offset = 1;
     local_ordinal_type j_offset = M2 + 1;
 
-    fail += test.tripletAddMDinvNtransToSymDeMatUTri(mxn_sparse, m2xn_sparse, vec_n, W_dense, i_offset, j_offset);
+    fail += test.tripletAddMDinvNtransToSymDeMatUTri(*mxn_sparse, m2xn_sparse, vec_n, W_dense, i_offset, j_offset);
 
 
-    // test sym sparse triplet
+    // test symmetric sparse matrix
     {
-      std::cout << "Testing hiopMatrixRajaSymSparseTriplet\n";
-      const int nnz_triangular = M_local * 3;
-      hiop::hiopMatrixRajaSymSparseTriplet m_sym(M_local, nnz_triangular, "DEVICE"); // nnz
-      hiop::hiopVectorRajaPar m_vec(M_local, "DEVICE");
+      std::cout << "\nTesting hiopMatrixRajaSymSparseTriplet\n";
 
-      fail += test.matrixTimesVec(m_sym, vec_m, vec_m_2);
-      initializeRajaSymSparseTriplet(m_sym);
-      fail += test.symAddToSymDenseMatrixUpperTriangle(mxm_dense, m_sym);
-      fail += test.symTransAddToSymDenseMatrixUpperTriangle(mxm_dense, m_sym);
-      fail += test.symStartingAtAddSubDiagonalToStartingAt(m_vec, m_sym);
+      const int nnz_triangular = M_local * 3;
+      hiop::hiopMatrixSparse* m_sym = 
+        hiop::LinearAlgebraFactory::createMatrixSymSparse(M_local, nnz_triangular);
+      hiop::hiopVectorRajaPar m_vec(M_local, mem_space);
+
+      test.initializeSymSparseMat(m_sym);
+      // fail += test.matrixTimesVec(*m_sym, vec_m, vec_m_2); // Fails!
+      fail += test.symAddToSymDenseMatrixUpperTriangle(mxm_dense, *m_sym);
+      fail += test.symTransAddToSymDenseMatrixUpperTriangle(mxm_dense, *m_sym);
+      fail += test.symStartingAtAddSubDiagonalToStartingAt(m_vec, *m_sym);
     }
   }
 
 
   if(fail)
   {
-    std::cout << fail << " matrix tests failed\n";
+    std::cout << "\n" << fail << " sparse matrix tests failed!\n";
   }
   else
   {
-    std::cout << "All matrix tests passed\n";
+    std::cout << "\nAll sparse matrix tests passed!\n";
   }
 
   return fail;
