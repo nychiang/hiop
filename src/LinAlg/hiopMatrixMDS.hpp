@@ -15,7 +15,7 @@ namespace hiop
 
 /** Mixed Sparse-Dense blocks matrix  - it is not distributed
  *  M = [S D] where S is sparse and D is dense
-*/
+ */
 class hiopMatrixMDS : public hiopMatrix
 {
 public:
@@ -237,7 +237,7 @@ class hiopMatrixSymBlockDiagMDS : public hiopMatrix
 public:
   hiopMatrixSymBlockDiagMDS(int n_sparse, int n_dense, int nnz_sparse)
   {
-    mSp = new hiopMatrixSymSparseTriplet(n_sparse, nnz_sparse);
+    mSp = LinearAlgebraFactory::createMatrixSymSparse(n_sparse, nnz_sparse);
     mDe = LinearAlgebraFactory::createMatrixDense(n_dense, n_dense);
   }
   virtual ~hiopMatrixSymBlockDiagMDS()
@@ -416,7 +416,7 @@ public:
   inline long long n_sp() const {return mSp->n();}
   inline long long n_de() const {return  mDe->n();}
 
-  inline const hiopMatrixSymSparseTriplet* sp_mat() const { return mSp; }
+  inline const hiopMatrixSparse* sp_mat() const { return mSp; }
   inline const hiopMatrixDense* de_mat() const { return mDe; }
 
   inline int sp_nnz() const { return mSp->numberOfNonzeros(); }
@@ -435,8 +435,8 @@ public:
   }
 #endif
 private:
-  hiopMatrixSymSparseTriplet* mSp;
-  hiopMatrixDense* mDe;
+  hiopMatrixSparse* mSp; ///< Symmetric sparse matrix
+  hiopMatrixDense*  mDe; ///< Row-major dense matrix
 private:
   hiopMatrixSymBlockDiagMDS() : mSp(NULL), mDe(NULL) {};
   hiopMatrixSymBlockDiagMDS(const hiopMatrixMDS&) {};

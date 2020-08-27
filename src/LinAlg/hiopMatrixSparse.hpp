@@ -101,8 +101,23 @@ public:
   virtual void print(FILE* f = NULL, const char* msg = NULL, int maxRows = -1, int maxCols = -1,
     int rank = -1) const = 0;
 
+  /* extract subdiagonal from 'this' (source) and adds the entries to 'vec_dest' starting at
+   * index 'vec_start'. If num_elems>=0, 'num_elems' are copied; otherwise copies as many as
+   * are available in 'vec_dest' starting at 'vec_start'
+   */
+  virtual void startingAtAddSubDiagonalToStartingAt(int diag_src_start, const double& alpha, 
+					    hiopVector& vec_dest, int vec_start, int num_elems=-1) const = 0;
+					    
+
   virtual hiopMatrix* alloc_clone() const = 0;
   virtual hiopMatrix* new_copy() const = 0;
+
+  virtual int* i_row() = 0;
+  virtual int* j_col() = 0;
+  virtual double* M()  = 0;
+  virtual const int* i_row() const = 0;
+  virtual const int* j_col() const = 0;
+  virtual const double* M()  const = 0;
 
   inline long long m() const
   {

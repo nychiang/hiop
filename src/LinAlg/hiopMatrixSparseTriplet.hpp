@@ -99,6 +99,12 @@ public:
   //virtual void print(int maxRows=-1, int maxCols=-1, int rank=-1) const;
   virtual void print(FILE* f=NULL, const char* msg=NULL, int maxRows=-1, int maxCols=-1, int rank=-1) const;
 
+  virtual void startingAtAddSubDiagonalToStartingAt(int diag_src_start, const double& alpha, 
+					    hiopVector& vec_dest, int vec_start, int num_elems=-1) const 
+  {
+    assert(0 && "This method should be used only for symmetric matrices.\n");
+  }
+
   virtual hiopMatrix* alloc_clone() const;
   virtual hiopMatrix* new_copy() const;
 
