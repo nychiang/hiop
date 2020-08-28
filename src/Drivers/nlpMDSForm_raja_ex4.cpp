@@ -239,11 +239,12 @@ bool Ex4::eval_f(const long long& n, const double* x, bool new_x, double& obj_va
   {
     const double* y = x+2*ns;
     Q->timesVec(0.0, _buf_y, 1., y);
+    double* _buf_y_vec = this->_buf_y;
     RAJA::ReduceSum<HIOP_RAJA_REDUCE, double> aux(0);
     RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, nd),
         RAJA_LAMBDA(RAJA::Index_type i)
         {
-        aux += _buf_y[i] * y[i];
+        aux += _buf_y_vec[i] * y[i];
         });
     obj_value += 0.5 * aux.get();
   }

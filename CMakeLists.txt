@@ -279,6 +279,7 @@ install(FILES src/Interface/hiopInterface.hpp
   ${CMAKE_BINARY_DIR}/hiop_defs.hpp
   DESTINATION include)
 
+set(STRIP_TABLE_CMD "awk '/Problem Summary/ { while (!match($0, /termination/)){ if(match($0, /^[ ]+[0-9]/)) { print $0; } getline } }'")
 ##########################################################
 # CMake Tests
 ##########################################################
@@ -307,11 +308,38 @@ if (HIOP_WITH_MAKETEST)
   if(HIOP_USE_MPI)
     add_test(NAME NlpDenseCons3_50K_mpi COMMAND mpirun -np 2 $<TARGET_FILE:nlpDenseCons_ex3.exe> 50000 -selfcheck)
   endif(HIOP_USE_MPI)
-  add_test(NAME NlpMixedDenseSparse4_1 COMMAND $<TARGET_FILE:nlpMDS_ex4.exe> 400 100 0 -selfcheck)
-  add_test(NAME NlpMixedDenseSparse4_2 COMMAND $<TARGET_FILE:nlpMDS_ex4.exe> 400 100 1 -selfcheck)
+  add_test(NAME NlpMixedDenseSparse4_1 COMMAND bash -c "$<TARGET_FILE:nlpMDS_ex4.exe> 400 100 0 -selfcheck \
+    | ${STRIP_TABLE_CMD} \
+    | tee ${PROJECT_BINARY_DIR}/mds4_1.out")
+  add_test(NAME NlpMixedDenseSparse4_2 COMMAND bash -c "$<TARGET_FILE:nlpMDS_ex4.exe> 400 100 1 -selfcheck \
+    | ${STRIP_TABLE_CMD} \
+    | tee ${PROJECT_BINARY_DIR}/mds4_2.out")
   if(HIOP_USE_RAJA)
-    add_test(NAME NlpMixedDenseSparseRaja4_1 COMMAND $<TARGET_FILE:nlpMDS_ex4_raja.exe> 400 100 0 -selfcheck)
-    add_test(NAME NlpMixedDenseSparseRaja4_2 COMMAND $<TARGET_FILE:nlpMDS_ex4_raja.exe> 400 100 1 -selfcheck)
+    add_test(NAME NlpMixedDenseSparseRaja4_1 COMMAND bash -c "$<TARGET_FILE:nlpMDS_ex4_raja.exe> 400 100 0 -selfcheck \
+      | ${STRIP_TABLE_CMD} \
+      | tee ${PROJECT_BINARY_DIR}/mds4_raja_1.out")
+    add_test(NAME NlpMixedDenseSparseRaja4_2 COMMAND bash -c "$<TARGET_FILE:nlpMDS_ex4_raja.exe> 400 100 1 -selfcheck \
+      | ${STRIP_TABLE_CMD} \
+      | tee ${PROJECT_BINARY_DIR}/mds4_raja_2.out")
+
+    foreach(iter 1 2)
+      add_test(
+        NAME "CompareExample4_NumIterations_${iter}" 
+        COMMAND bash -c "\
+        if [[ $(wc -l ${PROJECT_BINARY_DIR}/mds4_${iter}.out|cut -f1 -d' ') == $(wc -l ${PROJECT_BINARY_DIR}/mds4_raja_${iter}.out|cut -f1 -d' ') ]]
+          then
+            echo 'Output tables have the same number of iterations.'
+            exit 0
+          else
+            echo 'Output tables have a different number of iterations!'
+            exit 1
+          fi")
+      add_test(
+        NAME "CompareExample4_ElementWise_${iter}"
+        COMMAND bash -c "\
+          join ${PROJECT_BINARY_DIR}/mds4_${iter}.out ${PROJECT_BINARY_DIR}/mds4_raja_${iter}.out \
+          | ${PROJECT_SOURCE_DIR}/tests/testEx4CompareIterations.awk")
+    endforeach()
   endif()
   add_test(NAME NlpMixedDenseSparse5_1 COMMAND $<TARGET_FILE:nlpMDS_ex5.exe> 100 40 -selfcheck)
   if(HIOP_BUILD_SHARED AND NOT HIOP_USE_GPU)

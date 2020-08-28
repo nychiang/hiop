@@ -2,10 +2,28 @@
 
 set -x
 
+cleanup() {
+  echo
+  echo Exit code $1 caught in build script.
+  echo
+  if [[ "$1" == "0" ]]; then
+    echo BUILD_STATUS:0
+  else
+    echo
+    echo Failure found on line $2 in build script.
+    echo
+    echo BUILD_STATUS:1
+  fi
+}
+
+trap 'cleanup $? $LINENO' EXIT
+
 #  NOTE: The following is required when running from Gitlab CI via slurm job
 source /etc/profile.d/modules.sh
 
-export MY_CLUSTER=`uname -n | sed -e 's/[0-9]//g' -e 's/\..*//'`
+if [[ ! -v MY_CLUSTER ]]; then
+  export MY_CLUSTER=`uname -n | sed -e 's/[0-9]//g' -e 's/\..*//'`
+fi
 export PROJ_DIR=/qfs/projects/exasgd
 export APPS_DIR=/share/apps
 
