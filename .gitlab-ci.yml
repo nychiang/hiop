@@ -51,7 +51,7 @@ build_on_marianas:
 build_on_newell:
   stage: build
   variables:
-    SLURM_Q: "newell"
+    SLURM_Q: "newell_shared"
   <<: *tags_definition
   <<: *script_definition
   only:

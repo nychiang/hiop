@@ -178,6 +178,10 @@ int main(int argc, char** argv)
     fail += test.vectorIsnan(x, rank);
     fail += test.vectorIsinf(x, rank);
     fail += test.vectorIsfinite(x, rank);
+
+    // Delete testing objects
+    delete a;
+    delete v;
   }
 
   // Test MPI+RAJA vector
@@ -253,14 +257,18 @@ int main(int argc, char** argv)
     fail += test.vectorIsnan(x, rank);
     fail += test.vectorIsinf(x, rank);
     fail += test.vectorIsfinite(x, rank);
+
+    // Delete testing objects
+    delete a;
+    delete v;
   }
 
   if (rank == 0)
   {
     if(fail)
-      std::cout << fail << " tests failed\n";
+      std::cout << "\n" << fail << " vector tests failed!\n\n";
     else
-      std::cout << "All tests passed\n";
+      std::cout << "\nAll vector tests passed!\n\n";
   }
 
   delete[] m_partition;

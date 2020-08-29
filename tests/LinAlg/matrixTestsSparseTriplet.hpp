@@ -49,9 +49,10 @@
 /**
  * @file matrixTestsSparseTriplet.hpp
  *
- * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>,  PNNL
+ * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>, PNNL
  * @author Slaven Peles <slaven.peles@pnnl.gov>, PNNL
  * @author Cameron Rutherford <robert.rutherford@pnnl.gov>, PNNL
+ * @author Jake K. Ryan <jake.ryan@pnnl.gov>, PNNL
  * 
  */
 
@@ -101,8 +102,7 @@ private:
   virtual void maybeCopyToDev(hiop::hiopMatrixSparse*);
   virtual void maybeCopyFromDev(hiop::hiopMatrixSparse*);
 public:
-  virtual void initializeSparseMat(hiop::hiopMatrixSparse* mat, local_ordinal_type entries_per_row);
-  virtual void initializeSymSparseMat(hiop::hiopMatrixSparse* mat);
+  virtual void initializeMatrix(hiop::hiopMatrixSparse* mat, local_ordinal_type entries_per_row);
 };
 
 }} // namespace hiop::tests

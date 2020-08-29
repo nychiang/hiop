@@ -127,13 +127,16 @@ int main(int argc, char** argv)
     hiop::hiopMatrixDenseRowMajor A_mxn(M_local, N_global, n_partition, comm);
     hiop::hiopMatrixDenseRowMajor A_nxm(N_local, M_global, m_partition, comm);
     // Try factory instead of constructor
-    hiop::hiopMatrixDense* B_mxn = hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm);
-    hiop::hiopMatrixDense* A_mxn_extra_row = hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm, M_local+1);
+    hiop::hiopMatrixDense* B_mxn = 
+      hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm);
+    hiop::hiopMatrixDense* A_mxn_extra_row =
+      hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm, M_local+1);
 
     // Non-distributed matrices:
     hiop::hiopMatrixDenseRowMajor A_mxk_nodist(M_local, K_local);
     // Try factory instead of constructor
-    hiop::hiopMatrixDense* A_mxm_nodist = hiop::LinearAlgebraFactory::createMatrixDense(M_local, M_local);
+    hiop::hiopMatrixDense* A_mxm_nodist =
+      hiop::LinearAlgebraFactory::createMatrixDense(M_local, M_local);
     hiop::hiopMatrixDenseRowMajor A_kxn_nodist(K_local, N_local);
     hiop::hiopMatrixDenseRowMajor A_kxm_nodist(K_local, M_local);
     hiop::hiopMatrixDenseRowMajor A_mxn_nodist(M_local, N_local);
@@ -192,6 +195,11 @@ int main(int argc, char** argv)
     fail += test.matrixShiftRows(A_mxn, rank);
     fail += test.matrixReplaceRow(A_mxn, x_n, rank);
     fail += test.matrixGetRow(A_mxn, x_n, rank);
+
+    // Delete test objects
+    delete B_mxn;
+    delete A_mxm_nodist;
+    delete A_mxn_extra_row;
   }
 
   // Test RAJA dense matrix
@@ -211,13 +219,16 @@ int main(int argc, char** argv)
     hiop::hiopMatrixRajaDense A_mxn(M_local, N_global, mem_space, n_partition, comm);
     hiop::hiopMatrixRajaDense A_nxm(N_local, M_global, mem_space, m_partition, comm);
     // Try factory instead of constructor
-    hiop::hiopMatrixDense* B_mxn = hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm);
-    hiop::hiopMatrixDense* A_mxn_extra_row = hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm, M_local+1);
+    hiop::hiopMatrixDense* B_mxn =
+      hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm);
+    hiop::hiopMatrixDense* A_mxn_extra_row =
+      hiop::LinearAlgebraFactory::createMatrixDense(M_local, N_global, n_partition, comm, M_local+1);
 
     // Non-distributed matrices:
     hiop::hiopMatrixRajaDense A_mxk_nodist(M_local, K_local, mem_space);
     // Try factory instead of constructor
-    hiop::hiopMatrixDense* A_mxm_nodist = hiop::LinearAlgebraFactory::createMatrixDense(M_local, M_local);
+    hiop::hiopMatrixDense* A_mxm_nodist =
+      hiop::LinearAlgebraFactory::createMatrixDense(M_local, M_local);
     hiop::hiopMatrixRajaDense A_kxn_nodist(K_local, N_local, mem_space);
     hiop::hiopMatrixRajaDense A_kxm_nodist(K_local, M_local, mem_space);
     hiop::hiopMatrixRajaDense A_mxn_nodist(M_local, N_local, mem_space);
@@ -276,17 +287,22 @@ int main(int argc, char** argv)
     fail += test.matrixShiftRows(A_mxn, rank);
     fail += test.matrixReplaceRow(A_mxn, x_n, rank);
     fail += test.matrixGetRow(A_mxn, x_n, rank);
+
+    // Delete test objects
+    delete B_mxn;
+    delete A_mxm_nodist;
+    delete A_mxn_extra_row;
   }
 
   if (rank == 0)
   {
     if(fail)
     {
-      std::cout << "Matrix tests failed\n";
+      std::cout << "\n" << fail << " dense matrix tests failed\n\n";
     }
     else
     {
-      std::cout << "Matrix tests passed\n";
+      std::cout << "\nAll dense matrix tests passed\n\n";
     }
   }
 

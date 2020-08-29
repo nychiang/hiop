@@ -49,7 +49,10 @@
 /**
  * @file MatrixTestsRajaSparseTriplet.cpp
  *
- * @author Jake Ryan <jake.ryan@pnnl.gov>,  PNNL
+ * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>, PNNL
+ * @author Slaven Peles <slaven.peles@pnnl.gov>, PNNL
+ * @author Cameron Rutherford <robert.rutherford@pnnl.gov>, PNNL
+ * @author Jake K. Ryan <jake.ryan@pnnl.gov>, PNNL
  * 
  */
 
@@ -281,7 +284,7 @@ local_ordinal_type* MatrixTestsRajaSparseTriplet::numNonzerosPerCol(hiop::hiopMa
   return sparsity_pattern;
 }
 
-void MatrixTestsRajaSparseTriplet::initializeSparseMat(
+void MatrixTestsRajaSparseTriplet::initializeMatrix(
     hiop::hiopMatrixSparse* mat,
     local_ordinal_type entries_per_row)
 {
@@ -308,33 +311,6 @@ void MatrixTestsRajaSparseTriplet::initializeSparseMat(
     jCol[i] = n-1;
     val[i++] = one;
     
-  }
-  A->copyToDev();
-}
-
-void MatrixTestsRajaSparseTriplet::initializeSymSparseMat(
-    hiop::hiopMatrixSparse* mat)
-{
-  auto* A = dynamic_cast<hiop::hiopMatrixRajaSymSparseTriplet*>(mat);
-  local_ordinal_type* iRow = A->i_row_host();
-  local_ordinal_type* jCol = A->j_col_host();
-  double* val = A->M_host();
-  const auto nnz = A->numberOfNonzeros();
-  int nonZerosUsed = 0;
-
-  local_ordinal_type m = A->m();
-  local_ordinal_type n = A->n();
-
-  // set up to nnz upper triangular entries to one
-  A->copyFromDev();
-  for(auto i = 0; i < m; i++) 
-  {
-    for(auto j = i; j < n && nonZerosUsed < nnz; j++, nonZerosUsed++)
-    {
-      iRow[nonZerosUsed] = i;
-      jCol[nonZerosUsed] = j;
-      val[nonZerosUsed] = one;
-    }
   }
   A->copyToDev();
 }
