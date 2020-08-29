@@ -49,9 +49,10 @@
 /**
  * @file matrixTestsSparse.hpp
  *
- * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>,  PNNL
+ * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>, PNNL
  * @author Slaven Peles <slaven.peles@pnnl.gov>, PNNL
  * @author Cameron Rutherford <robert.rutherford@pnnl.gov>, PNNL
+ * @author Jake K. Ryan <jake.ryan@pnnl.gov>, PNNL
  * 
  */
 
@@ -249,7 +250,7 @@ public:
    * @param[in] W - dense matrix where the product is stored
    * @param[in] offset - row/column offset in W, from where A*D^(-1)*A^T is added in place
    */
-  int tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(
+  int matrixAddMDinvMtransToDiagBlockOfSymDeMatUTri(
     hiop::hiopMatrixSparse& A,
     hiop::hiopVector& D,
     hiop::hiopMatrixDense& W,
@@ -341,7 +342,7 @@ public:
    * @param[in] i_offset - row offset in W, from where A*D^(-1)*B^T is stored
    * @param[in] j_offset - row offset in W, from where A*D^(-1)*B^T is stored
    */
-  bool tripletAddMDinvNtransToSymDeMatUTri(
+  bool matrixAddMDinvNtransToSymDeMatUTri(
     hiop::hiopMatrixSparse& A,
     hiop::hiopMatrixSparse& B,
     hiop::hiopVector& D,
@@ -606,8 +607,7 @@ public:
    * @brief Initialize sparse matrix with a homogeneous pattern to test a
    * realistic use-case.
    */
-  virtual void initializeSparseMat(hiop::hiopMatrixSparse* mat, local_ordinal_type entries_per_row) = 0;
-  virtual void initializeSymSparseMat(hiop::hiopMatrixSparse* mat) = 0;
+  virtual void initializeMatrix(hiop::hiopMatrixSparse* mat, local_ordinal_type entries_per_row) = 0;
 
 private:
   // linearly scans an unsorted array
