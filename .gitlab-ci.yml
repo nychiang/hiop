@@ -15,7 +15,7 @@
       # Follow job output
       touch output
       # tail -f output &
-      sbatch -A EXASGD -p $SLURM_Q --wait --gres=gpu:1 -o output -e output $WORKDIR/BUILD.sh
+      sbatch -A EXASGD -p $SLURM_Q --wait --gres=gpu:1 -o output -e output -t 1:00:00 $WORKDIR/BUILD.sh
       res=$?
       echo "finished batch job: $res"
       # cat output
