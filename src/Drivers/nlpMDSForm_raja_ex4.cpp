@@ -344,7 +344,7 @@ bool Ex4::eval_grad_f(const long long& n, const double* x, bool new_x, double* g
 }
 
 /**
- * This method always runs on GPU.
+ * This method must always runs on GPU.
  */
 bool Ex4::eval_Jac_cons(const long long& n, const long long& m, 
     const long long& num_cons, const long long* idx_cons,
@@ -355,53 +355,54 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
 {
   assert(num_cons==ns || num_cons==3*haveIneq);
 
-  if(iJacS!=NULL && jJacS!=NULL) {
-    int nnzit=0;
-    for(int itrow=0; itrow<num_cons; itrow++)
+  if(iJacS!=NULL && jJacS!=NULL)
+  {
+    // Compute equality constraints Jacobian
+    if(num_cons==ns && ns>0)
     {
-      const int con_idx = (int) idx_cons[itrow];
-      if(con_idx<ns && ns>0)
+      assert(2*ns==nnzJacS);
+      for(int itrow=0; itrow<num_cons; itrow++)
       {
+        const int con_idx = (int) idx_cons[itrow];
         //sparse Jacobian eq w.r.t. x and s
         //x
-        iJacS[nnzit] = con_idx;
-        jJacS[nnzit] = con_idx;
-        nnzit++;
+        iJacS[2*itrow] = con_idx;
+        jJacS[2*itrow] = con_idx;
 
         //s
-        iJacS[nnzit] = con_idx;
-        jJacS[nnzit] = con_idx+ns;
-        nnzit++;
+        iJacS[2*itrow+1] = con_idx;
+        jJacS[2*itrow+1] = con_idx+ns;
       }
-      else if(haveIneq) 
+    }
+
+    // Compute inequality constraints Jacobian
+    if(num_cons==3 && haveIneq && ns>0) 
+    {
+      assert(ns+3==nnzJacS);
+      for(int tid=0; tid<ns+3; ++tid)
       {
-        //sparse Jacobian ineq w.r.t x and s
-        if(con_idx-ns==0 && ns>0)
+        if(tid==0)
         {
-          //w.r.t x_1
-          iJacS[nnzit] = 0;
-          jJacS[nnzit] = 0;
-          nnzit++;
-          //w.r.t s
-          for(int i=0; i<ns; i++) {
-            iJacS[nnzit] = 0;
-            jJacS[nnzit] = ns+i;
-            nnzit++;
-          }
+          iJacS[tid] = 0;
+          jJacS[tid] = 0;
+          assert(idx_cons[0] == ns);
+        }
+        else if(tid>ns)
+        {
+          iJacS[tid] = tid-ns;
+          jJacS[tid] = tid-ns;
+          assert(idx_cons[1] == ns+1 && idx_cons[2] == ns+2);
         }
         else
         {
-          if( (con_idx-ns==1 || con_idx-ns==2) && ns>0 ) {
-            //w.r.t x_2 or x_3
-            iJacS[nnzit] = con_idx-ns;
-            jJacS[nnzit] = con_idx-ns;
-            nnzit++;
-          }
+          iJacS[tid] = 0;
+          jJacS[tid] = ns+tid-1;
         }
+
       }
-    }
-    assert(nnzit==nnzJacS);
-  } 
+    } // if(num_cons==3 && haveIneq)
+  } // if(iJacS!=NULL && jJacS!=NULL)
+
   //values for sparse Jacobian if requested by the solver
   if(MJacS!=NULL) {
     int nnzit=0;
