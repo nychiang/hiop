@@ -261,6 +261,9 @@ int main(int argc, char** argv)
     // Delete testing objects
     delete a;
     delete v;
+
+    // Set memory space back to default value
+    options.SetStringValue("mem_space", "default");
   }
 
   if (rank == 0)

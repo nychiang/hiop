@@ -442,7 +442,7 @@ bool hiopMatrixRajaSparseTriplet::isfinite() const
  * @brief Allocates a new hiopMatrixRajaSparseTriplet with the same dimensions
  * and size as this one.
  */
-hiopMatrix* hiopMatrixRajaSparseTriplet::alloc_clone() const
+hiopMatrixSparse* hiopMatrixRajaSparseTriplet::alloc_clone() const
 {
   return new hiopMatrixRajaSparseTriplet(nrows, ncols, nnz, mem_space_);
 }
@@ -450,7 +450,7 @@ hiopMatrix* hiopMatrixRajaSparseTriplet::alloc_clone() const
 /**
  * @brief Creates a deep copy of this matrix.
  */
-hiopMatrix* hiopMatrixRajaSparseTriplet::new_copy() const
+hiopMatrixSparse* hiopMatrixRajaSparseTriplet::new_copy() const
 {
 #ifdef HIOP_DEEPCHECKS
   assert(this->checkIndexesAreOrdered());
@@ -889,13 +889,13 @@ void hiopMatrixRajaSymSparseTriplet::timesVec(double beta,  double* y,
     });
 }
 
-hiopMatrix* hiopMatrixRajaSymSparseTriplet::alloc_clone() const
+hiopMatrixSparse* hiopMatrixRajaSymSparseTriplet::alloc_clone() const
 {
   assert(nrows == ncols);
   return new hiopMatrixRajaSymSparseTriplet(nrows, nnz, mem_space_);
 }
 
-hiopMatrix* hiopMatrixRajaSymSparseTriplet::new_copy() const
+hiopMatrixSparse* hiopMatrixRajaSymSparseTriplet::new_copy() const
 {
   assert(nrows == ncols);
   auto* copy = new hiopMatrixRajaSymSparseTriplet(nrows, nnz, mem_space_);
@@ -909,8 +909,13 @@ hiopMatrix* hiopMatrixRajaSymSparseTriplet::new_copy() const
   return copy;
 }
 
-/* block of W += alpha*this 
- * Note W; contains only the upper triangular entries */
+/** 
+ * @brief block of W += alpha*this 
+ * @note W contains only the upper triangular entries
+ * 
+ * @warning This method should not be called directly.
+ * Use addUpperTriangleToSymDenseMatrixUpperTriangle instead.
+ */
 void hiopMatrixRajaSymSparseTriplet::addToSymDenseMatrixUpperTriangle(int row_start, int col_start, 
   double alpha, hiopMatrixDense& W) const
 {
@@ -938,39 +943,30 @@ void hiopMatrixRajaSymSparseTriplet::addToSymDenseMatrixUpperTriangle(int row_st
 }
 
 
+/** 
+ * @brief block of W += alpha*(this)^T 
+ * @note W contains only the upper triangular entries
+ * 
+ * @warning This method should not be called directly.
+ * Use addUpperTriangleToSymDenseMatrixUpperTriangle instead.
+ */
 void hiopMatrixRajaSymSparseTriplet::transAddToSymDenseMatrixUpperTriangle(int row_start, int col_start, 
   double alpha, hiopMatrixDense& W) const
 {
-  assert(row_start>=0 && row_start+ncols<=W.m());
-  assert(col_start>=0 && col_start+nrows<=W.n());
-  assert(W.n()==W.m());
-
-  //double** WM = W.get_M();
-  RAJA::View<double, RAJA::Layout<2>> WM(W.local_buffer(), W.m(), W.n());
-  auto Wm = W.m();
-  auto Wn = W.n();
-  auto iRow = this->iRow_;
-  auto jCol = this->jCol_;
-  auto values = this->values_;
-  RAJA::forall<hiop_raja_exec>(RAJA::RangeSegment(0, nnz),
-    RAJA_LAMBDA(RAJA::Index_type it)
-    {
-      assert(iRow[it]<=jCol[it] && "sparse symmetric matrices should contain only upper triangle entries");
-      const int i = iRow[it]+row_start;
-      const int j = jCol[it]+col_start;
-      assert(i<Wm && j<Wn); assert(i>=0 && j>=0);
-      assert(i <= j && "symMatrices not aligned; source entries need to map inside the upper triangular part of destination");
-      WM(i, j) += alpha * values[it];
-    });
+  addToSymDenseMatrixUpperTriangle(row_start, col_start, alpha, W);
+  assert(0 && "This method should not be called for symmetric matrices.");
 }
 
 /* extract subdiagonal from 'this' (source) and adds the entries to 'vec_dest' starting at
  * index 'vec_start'. If num_elems>=0, 'num_elems' are copied; otherwise copies as many as
  * are available in 'vec_dest' starting at 'vec_start'
  */
-void hiopMatrixRajaSymSparseTriplet::
-startingAtAddSubDiagonalToStartingAt(int diag_src_start, const double& alpha, 
-  hiopVector& vec_dest, int vec_start, int num_elems/*=-1*/) const
+void hiopMatrixRajaSymSparseTriplet::startingAtAddSubDiagonalToStartingAt(
+  int diag_src_start,
+  const double& alpha, 
+  hiopVector& vec_dest,
+  int vec_start,
+  int num_elems/*=-1*/) const
 {
   auto& vd = dynamic_cast<hiopVectorRajaPar&>(vec_dest);
   if(num_elems < 0)

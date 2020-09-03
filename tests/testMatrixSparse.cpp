@@ -197,6 +197,9 @@ int main(int argc, char** argv)
 
     // Remove testing objects
     delete mxn_sparse;
+
+    // Set memory space back to default value
+    options.SetStringValue("mem_space", "default");
   }
 
 

@@ -196,6 +196,9 @@ int main(int argc, char** argv)
 
     // Destroy testing objects
     delete m_sym;
+
+    // Set memory space back to default value
+    options.SetStringValue("mem_space", "default");
   }
 
   if(fail)

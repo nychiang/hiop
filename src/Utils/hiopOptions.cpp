@@ -263,7 +263,7 @@ void hiopOptions::registerOptions()
     range[0] = "default";
     range[1] = "host";
     range[2] = "device";
-    range[3] = "uvm";
+    range[3] = "um";
     range[4] = "pinned";
     registerStrOption("mem_space", range[0], range,
     "Determines the memory space in which future linear algebra objects will be created");

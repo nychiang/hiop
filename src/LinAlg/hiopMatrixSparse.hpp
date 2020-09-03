@@ -60,7 +60,6 @@
 namespace hiop
 {
 
-class hiopMatrixSparseTriplet;
 /**
  * @brief Sparse matrix of doubles in triplet format - it is not distributed
  * @note for now (i,j) are expected ordered: first on rows 'i' and then on cols 'j'
@@ -121,10 +120,7 @@ public:
   virtual void transAddToSymDenseMatrixUpperTriangle(
     int row_dest_start, int col_dest_start, double alpha, hiopMatrixDense& W) const = 0;
   virtual void addUpperTriangleToSymDenseMatrixUpperTriangle(
-    int diag_start, double alpha, hiopMatrixDense& W) const
-  {
-    assert(false && "counterpart method of hiopMatrixSymSparse should be used");
-  }
+    int diag_start, double alpha, hiopMatrixDense& W) const = 0;
 
   /* diag block of W += alpha * M * D^{-1} * transpose(M), where M=this
    *
@@ -161,8 +157,8 @@ public:
 					    hiopVector& vec_dest, int vec_start, int num_elems=-1) const = 0;
 					    
 
-  virtual hiopMatrix* alloc_clone() const = 0;
-  virtual hiopMatrix* new_copy() const = 0;
+  virtual hiopMatrixSparse* alloc_clone() const = 0;
+  virtual hiopMatrixSparse* new_copy() const = 0;
 
   virtual int* i_row() = 0;
   virtual int* j_col() = 0;

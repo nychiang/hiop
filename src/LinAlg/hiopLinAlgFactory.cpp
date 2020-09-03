@@ -55,6 +55,12 @@
  */
 #include <algorithm>
 
+#include <hiop_defs.hpp>
+#ifdef HIOP_USE_RAJA
+#include <umpire/Allocator.hpp>
+#include <umpire/ResourceManager.hpp>
+#endif
+
 #include <hiopVectorPar.hpp>
 #include <hiopVectorRajaPar.hpp>
 #include <hiopMatrixDenseRowMajor.hpp>
@@ -142,6 +148,52 @@ hiopMatrixSparse* LinearAlgebraFactory::createMatrixSymSparse(int size, int nnz)
     return new hiopMatrixRajaSymSparseTriplet(size, nnz, mem_space_);
   }
 }
+
+/**
+ * @brief Static method to create a raw C array
+ */
+double* LinearAlgebraFactory::createRawArray(int n)
+{
+  if (mem_space_ == "DEFAULT")
+  {
+    return new double[n];
+  }
+  else
+  {
+#ifdef HIOP_USE_RAJA
+    auto& resmgr = umpire::ResourceManager::getInstance();
+    umpire::Allocator al  = resmgr.getAllocator(mem_space_);
+    return static_cast<double*>(al.allocate(n*sizeof(double)));
+#else
+    std::cout << "Need to enable RAJA and Umpire to use memory space "
+              << mem_space_ << ".\n"; 
+    return nullptr;
+#endif
+  }
+}
+
+/**
+ * @brief Static method to delete a raw C array
+ */
+void LinearAlgebraFactory::deleteRawArray(double* a)
+{
+  if (mem_space_ == "DEFAULT")
+  {
+    delete [] a;
+  }
+  else
+  {
+#ifdef HIOP_USE_RAJA
+    auto& resmgr = umpire::ResourceManager::getInstance();
+    umpire::Allocator al  = resmgr.getAllocator(mem_space_);
+    al.deallocate(a);
+#else
+    std::cout << "Need to enable RAJA and Umpire to delete array in memory space "
+              << mem_space_ << ".\n"; 
+#endif
+  }
+}
+
 
 void LinearAlgebraFactory::set_mem_space(const std::string mem_space)
 {
