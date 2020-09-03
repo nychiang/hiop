@@ -162,8 +162,8 @@ public:
     assert(0 && "This method should be used only for symmetric matrices.\n");
   }
 
-  virtual hiopMatrix* alloc_clone() const;
-  virtual hiopMatrix* new_copy() const;
+  virtual hiopMatrixSparse* alloc_clone() const;
+  virtual hiopMatrixSparse* new_copy() const;
 
   inline int* i_row() { return iRow_; }
   inline int* j_col() { return jCol_; }
@@ -278,8 +278,8 @@ public:
 					    hiopVector& vec_dest, int vec_start, int num_elems=-1) const;
 					    
 
-  virtual hiopMatrix* alloc_clone() const;
-  virtual hiopMatrix* new_copy() const;
+  virtual hiopMatrixSparse* alloc_clone() const;
+  virtual hiopMatrixSparse* new_copy() const;
 
 #ifdef HIOP_DEEPCHECKS
   virtual bool assertSymmetry(double tol=1e-16) const { return true; }

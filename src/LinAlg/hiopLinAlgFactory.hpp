@@ -99,8 +99,20 @@ public:
     int size,
     int nnz);
 
+  /**
+   * @brief Static method to create a raw C array
+   */
+  static double* createRawArray(int n);
+
+  /**
+   * @brief Static method to delete a raw C array
+   */
+  static void deleteRawArray(double* a);
+
+  /// Method to set memory space ID
   static void set_mem_space(const std::string mem_space);
 
+  /// Return memory space ID
   inline static std::string get_mem_space()
   {
     return mem_space_;

@@ -292,6 +292,9 @@ int main(int argc, char** argv)
     delete B_mxn;
     delete A_mxm_nodist;
     delete A_mxn_extra_row;
+
+    // Set memory space back to default value
+    options.SetStringValue("mem_space", "default");
   }
 
   if (rank == 0)
