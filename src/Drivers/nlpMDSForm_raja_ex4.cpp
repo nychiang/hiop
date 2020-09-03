@@ -344,7 +344,24 @@ bool Ex4::eval_grad_f(const long long& n, const double* x, bool new_x, double* g
 }
 
 /**
- * This method must always runs on GPU.
+ * @brief Evaluate Jacobian for equality and inequality constraints
+ * 
+ * @param[in] n - number of variables
+ * @param[in] m - number of equality and inequality constraints
+ * @param[in] num_cons - number of constraints to update
+ * @param[in] idx_cons - indices of constraints to update
+ * @param[in] x - solution vector (optimization variables)
+ * @param[in] new_x - if variable is updated (?) 
+ * @param[in] nsparse - number of sparse variables 
+ * @param[in] ndense  - number of dense variables 
+ * @param[in] nnzJacS - number of nonzeros in sparse Jacobian block
+ * @param[out] - sparse matrix row indices
+ * @param[out] - sparse matrix column indices
+ * @param[out] - sparse matrix values
+ * @param[out] - array to dense matrix row pointers
+ * 
+ * This method runs on GPU.
+ * 
  */
 bool Ex4::eval_Jac_cons(const long long& n, const long long& m, 
     const long long& num_cons, const long long* idx_cons,
@@ -368,10 +385,14 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
         //x
         iJacS[2*itrow] = con_idx;
         jJacS[2*itrow] = con_idx;
+        if(MJacS != nullptr)
+          MJacS[2*itrow] = 1.0;
 
         //s
         iJacS[2*itrow+1] = con_idx;
         jJacS[2*itrow+1] = con_idx+ns;
+        if(MJacS != nullptr)
+          MJacS[2*itrow+1] = 1.0;
       }
     }
 
@@ -379,75 +400,38 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
     if(num_cons==3 && haveIneq && ns>0) 
     {
       assert(ns+3==nnzJacS);
+      // Loop over all matrix nonzeros
       for(int tid=0; tid<ns+3; ++tid)
       {
         if(tid==0)
         {
           iJacS[tid] = 0;
           jJacS[tid] = 0;
+          if(MJacS != nullptr)
+            MJacS[tid] = 1.0;
           assert(idx_cons[0] == ns);
         }
         else if(tid>ns)
         {
           iJacS[tid] = tid-ns;
           jJacS[tid] = tid-ns;
+          if(MJacS != nullptr)
+            MJacS[tid] = 1.0;
           assert(idx_cons[1] == ns+1 && idx_cons[2] == ns+2);
         }
         else
         {
           iJacS[tid] = 0;
           jJacS[tid] = ns+tid-1;
+          if(MJacS != nullptr)
+            MJacS[tid] = 1.0;
         }
 
       }
     } // if(num_cons==3 && haveIneq)
   } // if(iJacS!=NULL && jJacS!=NULL)
 
-  //values for sparse Jacobian if requested by the solver
-  if(MJacS!=NULL) {
-    int nnzit=0;
-    for(int itrow=0; itrow<num_cons; itrow++)
-    {
-      const int con_idx = (int) idx_cons[itrow];
-      if(con_idx<ns && ns>0)
-      {
-        //sparse Jacobian EQ w.r.t. x and s
-        //x
-        MJacS[nnzit] = 1.;
-        nnzit++;
-
-        //s
-        MJacS[nnzit] = 1.;
-        nnzit++;
-
-      }
-      else if(haveIneq)
-      {
-        //sparse Jacobian INEQ w.r.t x and s
-        if(con_idx-ns==0 && ns>0)
-        {
-          //w.r.t x_1
-          MJacS[nnzit] = 1.;
-          nnzit++;
-          //w.r.t s
-          for(int i=0; i<ns; i++) {
-            MJacS[nnzit] = 1.;
-            nnzit++;
-          }
-        }
-        else
-        {
-          if( (con_idx-ns==1 || con_idx-ns==2) && ns>0) {
-            //w.r.t x_2 or x_3
-            MJacS[nnzit] = 1.;
-            nnzit++;
-          }
-        }
-      }
-    }
-    assert(nnzit==nnzJacS);
-  }
-
+  // Temporary output for debugging
   // for(int i=0 ; i<nnzJacS; ++i)
   // {
   //   std::cout << i << " " << iJacS[i] << " " << jJacS[i] << " " << MJacS[i] << "\n";
@@ -455,27 +439,29 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
   // std::cout << std::endl;
 
   //dense Jacobian w.r.t y
-  if(JacD!=NULL) {
-    bool isEq=false;
-    for(int itrow=0; itrow<num_cons; itrow++) {
-      const int con_idx = (int) idx_cons[itrow];
-      if(con_idx<ns) {
-        isEq=true;
-        assert(num_cons==ns);
-        continue;
-      } else if(haveIneq) {
+  if(JacD!=NULL) 
+  {
+    if(num_cons == ns && ns > static_cast<int>(idx_cons[0]))
+    {
+      //assert(num_cons==ns);
+      memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
+    }
+
+    if(num_cons==3 && haveIneq && ns>0)
+    {
+      for(int itrow=0; itrow<num_cons; itrow++)
+      {
+        const int con_idx = static_cast<int>(idx_cons[itrow]);
         //do an in place fill-in for the ineq Jacobian corresponding to e^T
         assert(con_idx-ns==0 || con_idx-ns==1 || con_idx-ns==2);
         assert(num_cons==3);
-        for(int i=0; i<nd; i++) {
+        for(int i=0; i<nd; i++)
+        {
           JacD[con_idx-ns][i] = 1.;
         }
       }
     }
-    if(isEq) {
-      memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
-    }
-  }
+  } // if(JacD != nullptr)
 
   return true;
 }
@@ -673,6 +659,24 @@ bool Ex4OneCallCons::eval_cons(const long long& n, const long long& m,
   return true;
 }
 
+/**
+ * @brief Evaluate Jacobian for equality and inequality constraints
+ * 
+ * @param[in] n - number of variables
+ * @param[in] m - number of equality and inequality constraints
+ * @param[in] x - solution vector (optimization variables)
+ * @param[in] new_x - if variable is updated (?) 
+ * @param[in] nsparse - number of sparse variables 
+ * @param[in] ndense  - number of dense variables 
+ * @param[in] nnzJacS - number of nonzeros in sparse Jacobian block
+ * @param[out] - sparse matrix row indices
+ * @param[out] - sparse matrix column indices
+ * @param[out] - sparse matrix values
+ * @param[out] - array to dense matrix row pointers
+ * 
+ * This method runs on GPU.
+ * 
+ */
 bool Ex4OneCallCons::eval_Jac_cons(const long long& n, const long long& m, 
     const double* x, bool new_x,
     const long long& nsparse, const long long& ndense, 
@@ -681,96 +685,79 @@ bool Ex4OneCallCons::eval_Jac_cons(const long long& n, const long long& m,
 {
   assert(m==ns+3*haveIneq);
 
-  if(iJacS!=NULL && jJacS!=NULL) {
-    int nnzit=0;
-    for(int con_idx=0; con_idx<ns; ++con_idx) {
+  if(iJacS!=NULL && jJacS!=NULL)
+  {
+    // Compute equality constraints Jacobian
+    assert(3*ns+3==nnzJacS);
+    for(int itrow=0; itrow<ns; itrow++)
+    {
       //sparse Jacobian eq w.r.t. x and s
       //x
-      iJacS[nnzit] = con_idx;
-      jJacS[nnzit] = con_idx;
-      nnzit++;
+      iJacS[2*itrow] = itrow;
+      jJacS[2*itrow] = itrow;
+      if(MJacS != nullptr)
+        MJacS[2*itrow] = 1.0;
 
       //s
-      iJacS[nnzit] = con_idx;
-      jJacS[nnzit] = con_idx+ns;
-      nnzit++;
+      iJacS[2*itrow+1] = itrow;
+      jJacS[2*itrow+1] = itrow+ns;
+      if(MJacS != nullptr)
+        MJacS[2*itrow+1] = 1.0;
     }
-    if(haveIneq && ns>0) {
-      for(int con_idx=ns; con_idx<m; ++con_idx) {
 
-        //sparse Jacobian ineq w.r.t x and s
-        if(con_idx==ns) {
-          //w.r.t x_1
-          iJacS[nnzit] = con_idx;
-          jJacS[nnzit] = 0;
-          nnzit++;
-          //w.r.t s
-          for(int i=0; i<ns; i++) {
-            iJacS[nnzit] = con_idx;
-            jJacS[nnzit] = ns+i;
-            nnzit++;
-          }
-        } else {
-          if(con_idx-ns==1 || con_idx-ns==2) {
-            //w.r.t x_2 or x_3
-            iJacS[nnzit] = con_idx;
-            jJacS[nnzit] = con_idx-ns;
-            nnzit++;
-          } else { assert(false); }
+    // Compute inequality constraints Jacobian
+    if(haveIneq && ns>0) 
+    {
+      // Loop over all matrix nonzeros
+      for(int tid=0; tid<ns+3; ++tid)
+      {
+        const int offset = 2*ns;
+        if(tid==0)
+        {
+          iJacS[tid+offset] = ns;
+          jJacS[tid+offset] = 0;
+          if(MJacS != nullptr)
+            MJacS[tid+offset] = 1.0;
+        }
+        else if(tid>ns)
+        {
+          iJacS[tid+offset] = tid;
+          jJacS[tid+offset] = tid-ns;
+          if(MJacS != nullptr)
+            MJacS[tid+offset] = 1.0;
+        }
+        else
+        {
+          iJacS[tid+offset] = ns;
+          jJacS[tid+offset] = ns+tid-1;
+          if(MJacS != nullptr)
+            MJacS[tid+offset] = 1.0;
         }
       }
-    }
-    assert(nnzit==nnzJacS);
-  }
-  //values for sparse Jacobian if requested by the solver
-  if(MJacS!=NULL) {
-    int nnzit=0;
-    for(int con_idx=0; con_idx<ns; ++con_idx) {
-      //sparse Jacobian EQ w.r.t. x and s
-      //x
-      MJacS[nnzit] = 1.;
-      nnzit++;
+    } // if(haveIneq)
 
-      //s
-      MJacS[nnzit] = 1.;
-      nnzit++;
+  } // if(iJacS!=NULL && jJacS!=NULL)
 
-    }
-
-    if(haveIneq && ns>0) {
-      for(int con_idx=ns; con_idx<m; ++con_idx) {
-        //sparse Jacobian INEQ w.r.t x and s
-        if(con_idx-ns==0) {
-          //w.r.t x_1
-          MJacS[nnzit] = 1.;
-          nnzit++;
-          //w.r.t s
-          for(int i=0; i<ns; i++) {
-            MJacS[nnzit] = 1.;
-            nnzit++;
-          }
-        } else {
-          if(con_idx-ns==1 || con_idx-ns==2) {
-            //w.r.t x_2 or x_3
-            MJacS[nnzit] = 1.;
-            nnzit++;
-          } else { assert(false); }
-        }
-      }
-    }
-    assert(nnzit==nnzJacS);
-  }
+  // // Temporary output for debugging
+  // // for(int i=0 ; i<nnzJacS; ++i)
+  // // {
+  // //   std::cout << i << " " << iJacS[i] << " " << jJacS[i] << " " << MJacS[i] << "\n";
+  // // }
+  // // std::cout << std::endl;
 
   //dense Jacobian w.r.t y
-  if(JacD!=NULL) {
+  if(JacD!=NULL)
+  {
     //just copy the dense Jacobian corresponding to equalities
     memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
 
-    if(haveIneq) {
+    if(haveIneq)
+    {
       assert(ns+3 == m);
       //do an in place fill-in for the ineq Jacobian corresponding to e^T
+      double* J = JacD[ns];
       for(int i=0; i<3*nd; ++i)
-        JacD[ns][i] = 1.;
+        J[i] = 1.;
     }
   }
   return true;
