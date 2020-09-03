@@ -174,10 +174,10 @@ bool Ex4::get_vars_info(const long long& n, double *xlow, double* xupp, Nonlinea
  * they will reside on device and will have to be accessed/assigned to 
  * in a RAJA kernel
  *
- * @param[out] m ?
- * @param[out] clow ?
- * @param[out] cupp ?
- * @param[out] type ?
+ * @param[out] m    - number of constraints
+ * @param[out] clow - inequality constraint lower bound
+ * @param[out] cupp - inequality constraint upper bound
+ * @param[out] type - constraint type
  */
 bool Ex4::get_cons_info(const long long& m, double* clow, double* cupp, NonlinearityType* type)
 {
@@ -344,9 +344,7 @@ bool Ex4::eval_grad_f(const long long& n, const double* x, bool new_x, double* g
 }
 
 /**
- * @todo This method will probably always have to run on the CPU side since
- * the var _nnzit_ is loop-dependent and cannot be run in parallel with the
- * other loop iterations.
+ * This method always runs on GPU.
  */
 bool Ex4::eval_Jac_cons(const long long& n, const long long& m, 
     const long long& num_cons, const long long* idx_cons,
@@ -359,9 +357,11 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
 
   if(iJacS!=NULL && jJacS!=NULL) {
     int nnzit=0;
-    for(int itrow=0; itrow<num_cons; itrow++) {
+    for(int itrow=0; itrow<num_cons; itrow++)
+    {
       const int con_idx = (int) idx_cons[itrow];
-      if(con_idx<ns && ns>0) {
+      if(con_idx<ns && ns>0)
+      {
         //sparse Jacobian eq w.r.t. x and s
         //x
         iJacS[nnzit] = con_idx;
@@ -372,10 +372,12 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
         iJacS[nnzit] = con_idx;
         jJacS[nnzit] = con_idx+ns;
         nnzit++;
-
-      } else if(haveIneq) {
+      }
+      else if(haveIneq) 
+      {
         //sparse Jacobian ineq w.r.t x and s
-        if(con_idx-ns==0 && ns>0) {
+        if(con_idx-ns==0 && ns>0)
+        {
           //w.r.t x_1
           iJacS[nnzit] = 0;
           jJacS[nnzit] = 0;
@@ -386,7 +388,9 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
             jJacS[nnzit] = ns+i;
             nnzit++;
           }
-        } else {
+        }
+        else
+        {
           if( (con_idx-ns==1 || con_idx-ns==2) && ns>0 ) {
             //w.r.t x_2 or x_3
             iJacS[nnzit] = con_idx-ns;
@@ -401,9 +405,11 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
   //values for sparse Jacobian if requested by the solver
   if(MJacS!=NULL) {
     int nnzit=0;
-    for(int itrow=0; itrow<num_cons; itrow++) {
+    for(int itrow=0; itrow<num_cons; itrow++)
+    {
       const int con_idx = (int) idx_cons[itrow];
-      if(con_idx<ns && ns>0) {
+      if(con_idx<ns && ns>0)
+      {
         //sparse Jacobian EQ w.r.t. x and s
         //x
         MJacS[nnzit] = 1.;
@@ -413,9 +419,12 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
         MJacS[nnzit] = 1.;
         nnzit++;
 
-      } else if(haveIneq) {
+      }
+      else if(haveIneq)
+      {
         //sparse Jacobian INEQ w.r.t x and s
-        if(con_idx-ns==0 && ns>0) {
+        if(con_idx-ns==0 && ns>0)
+        {
           //w.r.t x_1
           MJacS[nnzit] = 1.;
           nnzit++;
@@ -424,7 +433,9 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
             MJacS[nnzit] = 1.;
             nnzit++;
           }
-        } else {
+        }
+        else
+        {
           if( (con_idx-ns==1 || con_idx-ns==2) && ns>0) {
             //w.r.t x_2 or x_3
             MJacS[nnzit] = 1.;
@@ -435,6 +446,12 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
     }
     assert(nnzit==nnzJacS);
   }
+
+  // for(int i=0 ; i<nnzJacS; ++i)
+  // {
+  //   std::cout << i << " " << iJacS[i] << " " << jJacS[i] << " " << MJacS[i] << "\n";
+  // }
+  // std::cout << std::endl;
 
   //dense Jacobian w.r.t y
   if(JacD!=NULL) {
