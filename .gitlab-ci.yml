@@ -81,14 +81,8 @@ build_on_marianas:
   stage: build
   variables:
     SLURM_Q: "dl"
-<<<<<<< HEAD
-    CLUSTER: "marianas"
-  <<: *tags_definition
-  <<: *script_definition
-=======
   <<: *pnnl_tags_definition
   <<: *pnnl_script_definition
->>>>>>> raja-staging-area-dev
   only:
     - branches@exasgd/solvers/hiop
 
@@ -97,14 +91,8 @@ build_on_newell:
   stage: build
   variables:
     SLURM_Q: "newell_shared"
-<<<<<<< HEAD
-    CLUSTER: "newell"
-  <<: *tags_definition
-  <<: *script_definition
-=======
   <<: *pnnl_tags_definition
   <<: *pnnl_script_definition
->>>>>>> raja-staging-area-dev
   only:
     - branches@exasgd/solvers/hiop
 
