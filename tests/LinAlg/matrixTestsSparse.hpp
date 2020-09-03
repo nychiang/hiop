@@ -49,9 +49,10 @@
 /**
  * @file matrixTestsSparse.hpp
  *
- * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>,  PNNL
+ * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>, PNNL
  * @author Slaven Peles <slaven.peles@pnnl.gov>, PNNL
  * @author Cameron Rutherford <robert.rutherford@pnnl.gov>, PNNL
+ * @author Jake K. Ryan <jake.ryan@pnnl.gov>, PNNL
  * 
  */
 
@@ -70,6 +71,7 @@ namespace hiop { namespace tests {
 /**
  * @brief Tests are re-implemented here if necessary for SparseTriplet Matrices,
  * as the data layout is significantly different compares to dense matrices.
+ *
  * Any tests that would modify the sparsity pattern are not implemented.
  * Any tests that would make calls to non-implemented/needed functions are not implemented.
  * 
@@ -98,8 +100,8 @@ public:
     return fail;
   }
 
-  /// Verify function setting matrix elements to zero (depends on `setToConstant`).
-  bool matrixSetToZero(hiop::hiopMatrix& A)
+  /// @brief Verify function setting matrix elements to zero (depends on `setToConstant`).
+  bool matrixSetToZero(hiop::hiopMatrixSparse& A)
   {
     A.setToConstant(one);
     A.setToZero();
@@ -109,8 +111,8 @@ public:
     return fail;
   }
 
-  /// Test method that sets all structural nonzeros to constant
-  bool matrixSetToConstant(hiop::hiopMatrix& A)
+  /// @brief Test method that sets all structural nonzeros to constant
+  bool matrixSetToConstant(hiop::hiopMatrixSparse& A)
   {
     A.setToConstant(zero);
     int fail = verifyAnswer(&A, zero);
@@ -121,7 +123,7 @@ public:
     return fail;
   }
   
-  /// Test y <- beta * y + alpha * A * x
+  /// @brief Test y <- beta * y + alpha * A * x
   bool matrixTimesVec(
       hiop::hiopMatrixSparse& A,
       hiop::hiopVector& y,
@@ -155,7 +157,7 @@ public:
     return fail;
   }
 
-  /// Test: y <- beta * y + alpha * A^T * x
+  /// @brief Test: y <- beta * y + alpha * A^T * x
   bool matrixTransTimesVec(
       hiop::hiopMatrixSparse& A,
       hiop::hiopVector& x,
@@ -188,7 +190,7 @@ public:
     return fail;
   }
 
-  /// Test function that returns matrix element with maximum absolute value
+  /// @brief Test function that returns matrix element with maximum absolute value
   bool matrixMaxAbsValue(
       hiop::hiopMatrixSparse& A,
       const int rank=0)
@@ -200,28 +202,23 @@ public:
 
     // Positive largest value
     A.setToConstant(zero);
-    auto* Ad = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(&A);
-    if (Ad)
-      Ad->copyFromDev();
+    maybeCopyFromDev(&A);
     val[nnz - 1] = one;
-    if (Ad)
-      Ad->copyToDev();
+    maybeCopyToDev(&A);
     fail += A.max_abs_value() != one;
 
     // Negative largest value
     A.setToConstant(one);
-    if (Ad)
-      Ad->copyFromDev();
+    maybeCopyFromDev(&A);
     val[nnz - 1] = -two;
-    if (Ad)
-      Ad->copyToDev();
+    maybeCopyToDev(&A);
     fail += A.max_abs_value() != two;
 
     printMessage(fail, __func__);
     return fail;
   }
   
-  /// Test method that checks if matrix elements are finite
+  /// @brief Test method that checks if matrix elements are finite
   bool matrixIsFinite(hiop::hiopMatrixSparse& A)
   {
     auto nnz = A.numberOfNonzeros();
@@ -234,9 +231,7 @@ public:
       fail++;
 
     val[nnz - 1] = INFINITY;
-    auto* Ad = dynamic_cast<hiop::hiopMatrixRajaSparseTriplet*>(&A);
-    if (Ad)
-      Ad->copyToDev();
+    maybeCopyToDev(&A);
     if (A.isfinite()) 
       fail++;
 
@@ -255,7 +250,7 @@ public:
    * @param[in] W - dense matrix where the product is stored
    * @param[in] offset - row/column offset in W, from where A*D^(-1)*A^T is added in place
    */
-  int tripletAddMDinvMtransToDiagBlockOfSymDeMatUTri(
+  int matrixAddMDinvMtransToDiagBlockOfSymDeMatUTri(
     hiop::hiopMatrixSparse& A,
     hiop::hiopVector& D,
     hiop::hiopMatrixDense& W,
@@ -347,7 +342,7 @@ public:
    * @param[in] i_offset - row offset in W, from where A*D^(-1)*B^T is stored
    * @param[in] j_offset - row offset in W, from where A*D^(-1)*B^T is stored
    */
-  bool tripletAddMDinvNtransToSymDeMatUTri(
+  bool matrixAddMDinvNtransToSymDeMatUTri(
     hiop::hiopMatrixSparse& A,
     hiop::hiopMatrixSparse& B,
     hiop::hiopVector& D,
@@ -435,14 +430,17 @@ public:
     return fail;
   }
 
-  /*
+  /**
    * Block of W += alpha*A
    *
    * Precondition: W is square
+   * 
+   * @todo Change parameter _A_ to be of abstract class hiopMatrixSymSparse
+   * as soon as this interface exists.
    */
   bool symAddToSymDenseMatrixUpperTriangle(
     hiop::hiopMatrixDense& W,
-    hiop::hiopMatrixRajaSymSparseTriplet& A, // sym sparse matrix
+    hiop::hiopMatrixSparse& A, // sym sparse matrix
     const int rank=0)
   {
     const local_ordinal_type N_loc = W.get_local_size_n();
@@ -454,7 +452,6 @@ public:
 
     const local_ordinal_type start_idx_row = 0;
     const local_ordinal_type start_idx_col = N_loc - A_N_loc;
-    //printf("start_idx_col = %d\n", start_idx_col);
     const real_type alpha = half,
           A_val = half,
           W_val = one;
@@ -466,11 +463,9 @@ public:
     A.addToSymDenseMatrixUpperTriangle(start_idx_row, start_idx_col, alpha, W);
     
     // get sparsity pattern
-    A.copyFromDev(); // put behind dynamic cast
-    const auto* iRow = A.i_row_host();
-    const auto* jCol = A.j_col_host();
+    const auto* iRow = getRowIndices(&A);
+    const auto* jCol = getColumnIndices(&A);
     auto nnz = A.numberOfNonzeros();
-    //printf("nnz = %d\n", nnz);
     fail += verifyAnswer(&W,
       [=] (local_ordinal_type i, local_ordinal_type j) -> real_type
       {
@@ -480,7 +475,6 @@ public:
           i>=start_idx_row && i<start_idx_row+A_M &&
           j>=start_idx_col && j<start_idx_col+A_N_loc &&
           j >= i);
-        //printf("(%d, %d) %s upper triangular\n", i, j, isUpperTriangle ? "is" : "is not");
 
         // only nonzero entries in A will be added
         const bool indexExists = find_unsorted_pair(i, j, iRow, jCol, nnz);
@@ -492,17 +486,20 @@ public:
     return fail;
   }
 
-  /*
+  /**
    * Block of W += alpha*A
    *
    * Block of W summed with A is in the trasposed
    * location of the same call to addToSymDenseMatrixUpperTriangle
    *
    * Precondition: W is square
+   * 
+   * @todo Remove implementations specific code from this test!!!
+   * @todo Format documentation correctly
    */
   bool symTransAddToSymDenseMatrixUpperTriangle(
     hiop::hiopMatrixDense& W,
-    hiop::hiopMatrixRajaSymSparseTriplet& A,
+    hiop::hiopMatrixSparse& A,
     const int rank=0)
   {
     const local_ordinal_type N_loc = W.get_local_size_n();
@@ -518,16 +515,14 @@ public:
           A_val = half,
           W_val = one;
 
-    //printf("row start = %d, col start = %d\n", start_idx_row, start_idx_col);
     A.setToConstant(A_val);
     W.setToConstant(W_val);
 
     A.transAddToSymDenseMatrixUpperTriangle(start_idx_row, start_idx_col, alpha, W);
 
     // get sparsity pattern
-    A.copyFromDev(); // put behind dynamic cast
-    const auto* iRow = A.i_row_host();
-    const auto* jCol = A.j_col_host();
+    const auto* iRow = getRowIndices(&A);
+    const auto* jCol = getColumnIndices(&A);
     auto nnz = A.numberOfNonzeros();
     const int fail = verifyAnswer(&W,
       [=] (local_ordinal_type i, local_ordinal_type j) -> real_type
@@ -545,11 +540,15 @@ public:
     return fail;
   }
 
+  /// @todo add implementation of `startingAtAddSubDiagonalToStartingAt`
+  /// for abstract sparse matrix interface and all sparse matrix classes, 
+  /// then remove this dynamic cast to make the test implementation-agnostic.
   bool symStartingAtAddSubDiagonalToStartingAt(
     hiop::hiopVector& W,
-    hiop::hiopMatrixRajaSymSparseTriplet& A,
+    hiop::hiopMatrixSparse& Amat,
     const int rank = 0)
   {
+    auto& A = dynamic_cast<hiop::hiopMatrixRajaSymSparseTriplet&>(Amat);
     assert(W.get_size() == A.m()); // A is square
     
     const auto start_src_idx = 0;
@@ -562,10 +561,9 @@ public:
     A.setToConstant(A_val);
     W.setToConstant(W_val);
     A.startingAtAddSubDiagonalToStartingAt(start_src_idx, alpha, W, start_dest_idx, num_elems);
-    A.copyFromDev();
 
-    const auto* iRow = A.i_row_host();
-    const auto* jCol = A.j_col_host();
+    const auto* iRow = getRowIndices(&A);
+    const auto* jCol = getColumnIndices(&A);
     auto nnz = A.numberOfNonzeros();
     const auto fail = verifyAnswer(&W, 
       [=](local_ordinal_type i) -> real_type
@@ -579,7 +577,7 @@ public:
   }
 
 private:
-  // TODO: The sparse matrix is not distributed - all is local. 
+  /// TODO: The sparse matrix is not distributed - all is local. 
   // Rename functions to remove redundant "local" from their names?
   virtual void setLocalElement(
       hiop::hiopVector* x,
@@ -591,9 +589,9 @@ private:
   virtual const local_ordinal_type* getRowIndices(const hiop::hiopMatrixSparse* a) = 0;
   virtual const local_ordinal_type* getColumnIndices(const hiop::hiopMatrixSparse* a) = 0;
   virtual local_ordinal_type getLocalSize(const hiop::hiopVector* x) = 0;
-  virtual int verifyAnswer(hiop::hiopMatrix* A, real_type answer) = 0;
+  virtual int verifyAnswer(hiop::hiopMatrixSparse* A, real_type answer) = 0;
   virtual int verifyAnswer(
-      hiop::hiopMatrix* A,
+      hiop::hiopMatrixDense* A,
       std::function<real_type(local_ordinal_type, local_ordinal_type)> expect) = 0;
   virtual int verifyAnswer(hiop::hiopVector* x, real_type answer) = 0;
   virtual int verifyAnswer(
@@ -601,7 +599,17 @@ private:
       std::function<real_type(local_ordinal_type)> expect) = 0;
   virtual local_ordinal_type* numNonzerosPerRow(hiop::hiopMatrixSparse* mat) = 0;
   virtual local_ordinal_type* numNonzerosPerCol(hiop::hiopMatrixSparse* mat) = 0;
+  virtual void maybeCopyToDev(hiop::hiopMatrixSparse*) = 0;
+  virtual void maybeCopyFromDev(hiop::hiopMatrixSparse*) = 0;
 
+public:
+  /**
+   * @brief Initialize sparse matrix with a homogeneous pattern to test a
+   * realistic use-case.
+   */
+  virtual void initializeMatrix(hiop::hiopMatrixSparse* mat, local_ordinal_type entries_per_row) = 0;
+
+private:
   // linearly scans an unsorted array
   static bool find_unsorted_pair(int valA, int valB, const int* arrA, const int* arrB, size_t arrslen)
   {

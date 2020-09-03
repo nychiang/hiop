@@ -65,16 +65,18 @@ public:
   LinearAlgebraFactory() = delete; //default;
   ~LinearAlgebraFactory() = delete; //default;
 
+  /**
+   * @brief Static method to create vector
+   */
   static hiopVector* createVector(
     const long long& glob_n,
     long long* col_part = NULL,
     MPI_Comm comm = MPI_COMM_SELF); 
 
-  // static hiopVector* createVector(
-  //   const long long& glob_n
-  //   //const std::string mem_space = "DEFAULT"
-  //   ); 
-
+  /**
+   * @brief Static method to create a dense matrix.
+   * 
+   */
   static hiopMatrixDense* createMatrixDense(
     const long long& m,
     const long long& glob_n,
@@ -82,11 +84,38 @@ public:
     MPI_Comm comm = MPI_COMM_SELF,
     const long long& m_max_alloc = -1);
 
-  static hiopMatrixSparse* createMatrixSparse(int rows, int cols, int nnz);
+  /**
+   * @brief Static method to create a sparse matrix
+   */
+  static hiopMatrixSparse* createMatrixSparse(
+    int rows,
+    int cols,
+    int nnz);
 
-  inline static void set_mem_space(const std::string mem_space)
+  /**
+   * @brief Static method to create a symmetric sparse matrix
+   */
+  static hiopMatrixSparse* createMatrixSymSparse(
+    int size,
+    int nnz);
+
+  /**
+   * @brief Static method to create a raw C array
+   */
+  static double* createRawArray(int n);
+
+  /**
+   * @brief Static method to delete a raw C array
+   */
+  static void deleteRawArray(double* a);
+
+  /// Method to set memory space ID
+  static void set_mem_space(const std::string mem_space);
+
+  /// Return memory space ID
+  inline static std::string get_mem_space()
   {
-    mem_space_ = mem_space;
+    return mem_space_;
   }
 
 private:

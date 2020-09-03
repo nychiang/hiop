@@ -99,8 +99,14 @@ public:
   //virtual void print(int maxRows=-1, int maxCols=-1, int rank=-1) const;
   virtual void print(FILE* f=NULL, const char* msg=NULL, int maxRows=-1, int maxCols=-1, int rank=-1) const;
 
-  virtual hiopMatrix* alloc_clone() const;
-  virtual hiopMatrix* new_copy() const;
+  virtual void startingAtAddSubDiagonalToStartingAt(int diag_src_start, const double& alpha, 
+					    hiopVector& vec_dest, int vec_start, int num_elems=-1) const 
+  {
+    assert(0 && "This method should be used only for symmetric matrices.\n");
+  }
+
+  virtual hiopMatrixSparse* alloc_clone() const;
+  virtual hiopMatrixSparse* new_copy() const;
 
   inline int* i_row() { return iRow; }
   inline int* j_col() { return jCol; }
@@ -197,8 +203,8 @@ public:
 					    hiopVector& vec_dest, int vec_start, int num_elems=-1) const;
 					    
 
-  virtual hiopMatrix* alloc_clone() const;
-  virtual hiopMatrix* new_copy() const;
+  virtual hiopMatrixSparse* alloc_clone() const;
+  virtual hiopMatrixSparse* new_copy() const;
 
 #ifdef HIOP_DEEPCHECKS
   virtual bool assertSymmetry(double tol=1e-16) const { return true; }

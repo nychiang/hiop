@@ -1,6 +1,33 @@
-.script_template: &script_definition
+.ornl_test_script_template: &ornl_test_script_definition
   script:
     - |
+      set -xv
+      # Use project space so we have the correct permissions...
+      TESTDIR="$PROJWORK/csc359/ci"
+      cd "$TESTDIR/"
+      # We should use the build script so all the same modules are loaded. DRY!
+      MY_CLUSTER="ascent" ./BUILD.sh --test-only
+      res=$?
+      # Must clean up after ourselves
+      rm -rf *
+      exit $res
+    
+
+.ornl_script_template: &ornl_script_definition
+  script:
+    - |
+      # Don't clean up this working directory - we need some of these files for
+      # testing
+      set -xv
+      TESTDIR="$PROJWORK/csc359/ci"
+      cp -a * $TESTDIR/
+      cd $TESTDIR
+      MY_CLUSTER="ascent" ./BUILD.sh --build-only || exit 1
+
+.pnnl_script_template: &pnnl_script_definition
+  script:
+    - |
+      set -xv
       #
       #  NOTES:  WORKDIR is on constance/marianas/newell
       #          ./      is only on the Kubernetes instance
@@ -38,31 +65,67 @@
       exit $res
 
 
-.tags_template: &tags_definition
+.pnnl_tags_template: &pnnl_tags_definition
   tags:
     - k8s
     - ikp
     - exasgd
     - marianas
 
+stages:
+  - build
+  - test
 
+# PNNL CI
 build_on_marianas:
   stage: build
   variables:
     SLURM_Q: "dl"
+<<<<<<< HEAD
     CLUSTER: "marianas"
   <<: *tags_definition
   <<: *script_definition
+=======
+  <<: *pnnl_tags_definition
+  <<: *pnnl_script_definition
+>>>>>>> raja-staging-area-dev
   only:
     - branches@exasgd/solvers/hiop
 
-
+# PNNL CI
 build_on_newell:
   stage: build
   variables:
     SLURM_Q: "newell_shared"
+<<<<<<< HEAD
     CLUSTER: "newell"
   <<: *tags_definition
   <<: *script_definition
+=======
+  <<: *pnnl_tags_definition
+  <<: *pnnl_script_definition
+>>>>>>> raja-staging-area-dev
   only:
     - branches@exasgd/solvers/hiop
+
+# For Ascent CI
+build-on-login-node:
+  stage: build
+  <<: *ornl_script_definition
+  tags:
+    - nobatch
+  only:
+    - branches@ecpcitest/exasgd/hiop
+
+# For Ascent CI
+test-on-compute-node:
+  stage: test
+  variables:
+    SCHEDULER_PARAMETERS: "-P CSC359 -nnodes 1 -W 30"
+  dependencies:
+    - build-on-login-node
+  tags:
+    - batch
+  only:
+    - branches@ecpcitest/exasgd/hiop
+  <<: *ornl_test_script_definition

@@ -1,3 +1,60 @@
+// Copyright (c) 2017, Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory (LLNL).
+// Written by Cosmin G. Petra, petra1@llnl.gov.
+// LLNL-CODE-742473. All rights reserved.
+//
+// This file is part of HiOp. For details, see https://github.com/LLNL/hiop. HiOp
+// is released under the BSD 3-clause license (https://opensource.org/licenses/BSD-3-Clause).
+// Please also read “Additional BSD Notice” below.
+//
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+// i. Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the disclaimer below.
+// ii. Redistributions in binary form must reproduce the above copyright notice,
+// this list of conditions and the disclaimer (as noted below) in the documentation and/or
+// other materials provided with the distribution.
+// iii. Neither the name of the LLNS/LLNL nor the names of its contributors may be used to
+// endorse or promote products derived from this software without specific prior written
+// permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+// SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+// AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+// EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Additional BSD Notice
+// 1. This notice is required to be provided under our contract with the U.S. Department
+// of Energy (DOE). This work was produced at Lawrence Livermore National Laboratory under
+// Contract No. DE-AC52-07NA27344 with the DOE.
+// 2. Neither the United States Government nor Lawrence Livermore National Security, LLC
+// nor any of their employees, makes any warranty, express or implied, or assumes any
+// liability or responsibility for the accuracy, completeness, or usefulness of any
+// information, apparatus, product, or process disclosed, or represents that its use would
+// not infringe privately-owned rights.
+// 3. Also, reference herein to any specific commercial products, process, or services by
+// trade name, trademark, manufacturer or otherwise does not necessarily constitute or
+// imply its endorsement, recommendation, or favoring by the United States Government or
+// Lawrence Livermore National Security, LLC. The views and opinions of authors expressed
+// herein do not necessarily state or reflect those of the United States Government or
+// Lawrence Livermore National Security, LLC, and shall not be used for advertising or
+// product endorsement purposes.
+
+/**
+ * @file hiopMatrixRajaSparseTriplet.cpp
+ *
+ * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>, PNNL
+ * @author Slaven Peles <slaven.peles@pnnl.gov>, PNNL
+ * @author Cameron Rutherford <robert.rutherford@pnnl.gov>, PNNL
+ * @author Jake K. Ryan <jake.ryan@pnnl.gov>, PNNL
+ *
+ */
 #include "hiopMatrixRajaSparseTriplet.hpp"
 #include "hiopVectorRajaPar.hpp"
 
@@ -385,7 +442,7 @@ bool hiopMatrixRajaSparseTriplet::isfinite() const
  * @brief Allocates a new hiopMatrixRajaSparseTriplet with the same dimensions
  * and size as this one.
  */
-hiopMatrix* hiopMatrixRajaSparseTriplet::alloc_clone() const
+hiopMatrixSparse* hiopMatrixRajaSparseTriplet::alloc_clone() const
 {
   return new hiopMatrixRajaSparseTriplet(nrows, ncols, nnz, mem_space_);
 }
@@ -393,7 +450,7 @@ hiopMatrix* hiopMatrixRajaSparseTriplet::alloc_clone() const
 /**
  * @brief Creates a deep copy of this matrix.
  */
-hiopMatrix* hiopMatrixRajaSparseTriplet::new_copy() const
+hiopMatrixSparse* hiopMatrixRajaSparseTriplet::new_copy() const
 {
 #ifdef HIOP_DEEPCHECKS
   assert(this->checkIndexesAreOrdered());
@@ -822,20 +879,23 @@ void hiopMatrixRajaSymSparseTriplet::timesVec(double beta,  double* y,
     {
       assert(iRow[i] < nrows);
       assert(jCol[i] < ncols);
-      RAJA::AtomicRef<double, hiop_raja_atomic> yy(&y[iRow[i]]);
-      yy += alpha * x[jCol[i]] * values[i];
+      RAJA::AtomicRef<double, hiop_raja_atomic> yy1(&y[iRow[i]]);
+      yy1 += alpha * x[jCol[i]] * values[i];
       if(iRow[i] != jCol[i])
-        yy += alpha * x[iRow[i]] * values[i];
+      {
+        RAJA::AtomicRef<double, hiop_raja_atomic> yy2(&y[jCol[i]]);
+        yy2 += alpha * x[iRow[i]] * values[i];
+      }
     });
 }
 
-hiopMatrix* hiopMatrixRajaSymSparseTriplet::alloc_clone() const
+hiopMatrixSparse* hiopMatrixRajaSymSparseTriplet::alloc_clone() const
 {
   assert(nrows == ncols);
   return new hiopMatrixRajaSymSparseTriplet(nrows, nnz, mem_space_);
 }
 
-hiopMatrix* hiopMatrixRajaSymSparseTriplet::new_copy() const
+hiopMatrixSparse* hiopMatrixRajaSymSparseTriplet::new_copy() const
 {
   assert(nrows == ncols);
   auto* copy = new hiopMatrixRajaSymSparseTriplet(nrows, nnz, mem_space_);
@@ -849,8 +909,13 @@ hiopMatrix* hiopMatrixRajaSymSparseTriplet::new_copy() const
   return copy;
 }
 
-/* block of W += alpha*this 
- * Note W; contains only the upper triangular entries */
+/** 
+ * @brief block of W += alpha*this 
+ * @note W contains only the upper triangular entries
+ * 
+ * @warning This method should not be called directly.
+ * Use addUpperTriangleToSymDenseMatrixUpperTriangle instead.
+ */
 void hiopMatrixRajaSymSparseTriplet::addToSymDenseMatrixUpperTriangle(int row_start, int col_start, 
   double alpha, hiopMatrixDense& W) const
 {
@@ -873,49 +938,35 @@ void hiopMatrixRajaSymSparseTriplet::addToSymDenseMatrixUpperTriangle(int row_st
       const int j = jCol[it]+col_start;
       assert(i<Wm && j<Wn); assert(i>=0 && j>=0);
       assert(i<=j && "symMatrices not aligned; source entries need to map inside the upper triangular part of destination");
-      RAJA::AtomicRef<double, hiop_raja_atomic> ww(&WM(i, j));
-      
-      // printf("i = %d, j = %d\n", i, j);
-      // printf("values[%d] = %f\n", it, values[it]);
-      
-      ww += alpha * values[it];
+      WM(i, j) += alpha * values[it];
     });
 }
 
 
+/** 
+ * @brief block of W += alpha*(this)^T 
+ * @note W contains only the upper triangular entries
+ * 
+ * @warning This method should not be called directly.
+ * Use addUpperTriangleToSymDenseMatrixUpperTriangle instead.
+ */
 void hiopMatrixRajaSymSparseTriplet::transAddToSymDenseMatrixUpperTriangle(int row_start, int col_start, 
   double alpha, hiopMatrixDense& W) const
 {
-  assert(row_start>=0 && row_start+ncols<=W.m());
-  assert(col_start>=0 && col_start+nrows<=W.n());
-  assert(W.n()==W.m());
-
-  //double** WM = W.get_M();
-  RAJA::View<double, RAJA::Layout<2>> WM(W.local_buffer(), W.m(), W.n());
-  auto Wm = W.m();
-  auto Wn = W.n();
-  auto iRow = this->iRow_;
-  auto jCol = this->jCol_;
-  auto values = this->values_;
-  RAJA::forall<hiop_raja_exec>(RAJA::RangeSegment(0, nnz),
-    RAJA_LAMBDA(RAJA::Index_type it)
-    {
-      assert(iRow[it]<=jCol[it] && "sparse symmetric matrices should contain only upper triangle entries");
-      const int i = iRow[it]+row_start;
-      const int j = jCol[it]+col_start;
-      assert(i<Wm && j<Wn); assert(i>=0 && j>=0);
-      assert(i <= j && "symMatrices not aligned; source entries need to map inside the upper triangular part of destination");
-      WM(j, i) += alpha * values[it];
-    });
+  addToSymDenseMatrixUpperTriangle(row_start, col_start, alpha, W);
+  assert(0 && "This method should not be called for symmetric matrices.");
 }
 
 /* extract subdiagonal from 'this' (source) and adds the entries to 'vec_dest' starting at
  * index 'vec_start'. If num_elems>=0, 'num_elems' are copied; otherwise copies as many as
  * are available in 'vec_dest' starting at 'vec_start'
  */
-void hiopMatrixRajaSymSparseTriplet::
-startingAtAddSubDiagonalToStartingAt(int diag_src_start, const double& alpha, 
-  hiopVector& vec_dest, int vec_start, int num_elems/*=-1*/) const
+void hiopMatrixRajaSymSparseTriplet::startingAtAddSubDiagonalToStartingAt(
+  int diag_src_start,
+  const double& alpha, 
+  hiopVector& vec_dest,
+  int vec_start,
+  int num_elems/*=-1*/) const
 {
   auto& vd = dynamic_cast<hiopVectorRajaPar&>(vec_dest);
   if(num_elems < 0)
