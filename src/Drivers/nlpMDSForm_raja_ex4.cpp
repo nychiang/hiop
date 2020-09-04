@@ -378,22 +378,23 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
     if(num_cons==ns && ns>0)
     {
       assert(2*ns==nnzJacS);
-      for(int itrow=0; itrow<num_cons; itrow++)
-      {
-        const int con_idx = (int) idx_cons[itrow];
-        //sparse Jacobian eq w.r.t. x and s
-        //x
-        iJacS[2*itrow] = con_idx;
-        jJacS[2*itrow] = con_idx;
-        if(MJacS != nullptr)
-          MJacS[2*itrow] = 1.0;
+      RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, num_cons),
+        RAJA_LAMBDA(RAJA::Index_type itrow)
+        {
+          const int con_idx = (int) idx_cons[itrow];
+          //sparse Jacobian eq w.r.t. x and s
+          //x
+          iJacS[2*itrow] = con_idx;
+          jJacS[2*itrow] = con_idx;
+          if(MJacS != nullptr)
+            MJacS[2*itrow] = 1.0;
 
-        //s
-        iJacS[2*itrow+1] = con_idx;
-        jJacS[2*itrow+1] = con_idx+ns;
-        if(MJacS != nullptr)
-          MJacS[2*itrow+1] = 1.0;
-      }
+          //s
+          iJacS[2*itrow+1] = con_idx;
+          jJacS[2*itrow+1] = con_idx+ns;
+          if(MJacS != nullptr)
+            MJacS[2*itrow+1] = 1.0;
+        });
     }
 
     // Compute inequality constraints Jacobian
@@ -401,42 +402,36 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
     {
       assert(ns+3==nnzJacS);
       // Loop over all matrix nonzeros
-      for(int tid=0; tid<ns+3; ++tid)
-      {
-        if(tid==0)
+      RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, ns+3),
+        RAJA_LAMBDA(RAJA::Index_type tid)
         {
-          iJacS[tid] = 0;
-          jJacS[tid] = 0;
-          if(MJacS != nullptr)
-            MJacS[tid] = 1.0;
-          assert(idx_cons[0] == ns);
-        }
-        else if(tid>ns)
-        {
-          iJacS[tid] = tid-ns;
-          jJacS[tid] = tid-ns;
-          if(MJacS != nullptr)
-            MJacS[tid] = 1.0;
-          assert(idx_cons[1] == ns+1 && idx_cons[2] == ns+2);
-        }
-        else
-        {
-          iJacS[tid] = 0;
-          jJacS[tid] = ns+tid-1;
-          if(MJacS != nullptr)
-            MJacS[tid] = 1.0;
-        }
+          if(tid==0)
+          {
+            iJacS[tid] = 0;
+            jJacS[tid] = 0;
+            if(MJacS != nullptr)
+              MJacS[tid] = 1.0;
+            assert(idx_cons[0] == ns);
+          }
+          else if(tid>ns)
+          {
+            iJacS[tid] = tid-ns;
+            jJacS[tid] = tid-ns;
+            if(MJacS != nullptr)
+              MJacS[tid] = 1.0;
+            assert(idx_cons[1] == ns+1 && idx_cons[2] == ns+2);
+          }
+          else
+          {
+            iJacS[tid] = 0;
+            jJacS[tid] = ns+tid-1;
+            if(MJacS != nullptr)
+              MJacS[tid] = 1.0;
+          }
+        });
 
-      }
     } // if(num_cons==3 && haveIneq)
   } // if(iJacS!=NULL && jJacS!=NULL)
-
-  // Temporary output for debugging
-  // for(int i=0 ; i<nnzJacS; ++i)
-  // {
-  //   std::cout << i << " " << iJacS[i] << " " << jJacS[i] << " " << MJacS[i] << "\n";
-  // }
-  // std::cout << std::endl;
 
   //dense Jacobian w.r.t y
   if(JacD!=NULL) 
@@ -444,6 +439,8 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
     if(num_cons == ns && ns > static_cast<int>(idx_cons[0]))
     {
       //assert(num_cons==ns);
+      auto& rm = umpire::ResourceManager::getInstance();
+      // rm.copy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
       memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
     }
 
@@ -455,10 +452,12 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
         //do an in place fill-in for the ineq Jacobian corresponding to e^T
         assert(con_idx-ns==0 || con_idx-ns==1 || con_idx-ns==2);
         assert(num_cons==3);
-        for(int i=0; i<nd; i++)
-        {
-          JacD[con_idx-ns][i] = 1.;
-        }
+        double* J = JacD[con_idx-ns];
+        RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, nd),
+          RAJA_LAMBDA(RAJA::Index_type i)
+          {
+            J[i] = 1.0;
+          });
       }
     }
   } // if(JacD != nullptr)
@@ -689,66 +688,62 @@ bool Ex4OneCallCons::eval_Jac_cons(const long long& n, const long long& m,
   {
     // Compute equality constraints Jacobian
     assert(3*ns+3==nnzJacS);
-    for(int itrow=0; itrow<ns; itrow++)
-    {
-      //sparse Jacobian eq w.r.t. x and s
-      //x
-      iJacS[2*itrow] = itrow;
-      jJacS[2*itrow] = itrow;
-      if(MJacS != nullptr)
-        MJacS[2*itrow] = 1.0;
+    RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, ns),
+      RAJA_LAMBDA(RAJA::Index_type itrow)
+      {
+        //sparse Jacobian eq w.r.t. x and s
+        //x
+        iJacS[2*itrow] = itrow;
+        jJacS[2*itrow] = itrow;
+        if(MJacS != nullptr)
+          MJacS[2*itrow] = 1.0;
 
-      //s
-      iJacS[2*itrow+1] = itrow;
-      jJacS[2*itrow+1] = itrow+ns;
-      if(MJacS != nullptr)
-        MJacS[2*itrow+1] = 1.0;
-    }
+        //s
+        iJacS[2*itrow+1] = itrow;
+        jJacS[2*itrow+1] = itrow+ns;
+        if(MJacS != nullptr)
+          MJacS[2*itrow+1] = 1.0;
+      });
 
     // Compute inequality constraints Jacobian
     if(haveIneq && ns>0) 
     {
       // Loop over all matrix nonzeros
-      for(int tid=0; tid<ns+3; ++tid)
-      {
-        const int offset = 2*ns;
-        if(tid==0)
+      RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, ns+3),
+        RAJA_LAMBDA(RAJA::Index_type tid)
         {
-          iJacS[tid+offset] = ns;
-          jJacS[tid+offset] = 0;
-          if(MJacS != nullptr)
-            MJacS[tid+offset] = 1.0;
-        }
-        else if(tid>ns)
-        {
-          iJacS[tid+offset] = tid;
-          jJacS[tid+offset] = tid-ns;
-          if(MJacS != nullptr)
-            MJacS[tid+offset] = 1.0;
-        }
-        else
-        {
-          iJacS[tid+offset] = ns;
-          jJacS[tid+offset] = ns+tid-1;
-          if(MJacS != nullptr)
-            MJacS[tid+offset] = 1.0;
-        }
-      }
+          const int offset = 2*ns;
+          if(tid==0)
+          {
+            iJacS[tid+offset] = ns;
+            jJacS[tid+offset] = 0;
+            if(MJacS != nullptr)
+              MJacS[tid+offset] = 1.0;
+          }
+          else if(tid>ns)
+          {
+            iJacS[tid+offset] = tid;
+            jJacS[tid+offset] = tid-ns;
+            if(MJacS != nullptr)
+              MJacS[tid+offset] = 1.0;
+          }
+          else
+          {
+            iJacS[tid+offset] = ns;
+            jJacS[tid+offset] = ns+tid-1;
+            if(MJacS != nullptr)
+              MJacS[tid+offset] = 1.0;
+          }
+        });
     } // if(haveIneq)
-
   } // if(iJacS!=NULL && jJacS!=NULL)
-
-  // // Temporary output for debugging
-  // // for(int i=0 ; i<nnzJacS; ++i)
-  // // {
-  // //   std::cout << i << " " << iJacS[i] << " " << jJacS[i] << " " << MJacS[i] << "\n";
-  // // }
-  // // std::cout << std::endl;
 
   //dense Jacobian w.r.t y
   if(JacD!=NULL)
   {
     //just copy the dense Jacobian corresponding to equalities
+    auto& rm = umpire::ResourceManager::getInstance();
+    // rm.copy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
     memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
 
     if(haveIneq)
@@ -756,8 +751,11 @@ bool Ex4OneCallCons::eval_Jac_cons(const long long& n, const long long& m,
       assert(ns+3 == m);
       //do an in place fill-in for the ineq Jacobian corresponding to e^T
       double* J = JacD[ns];
-      for(int i=0; i<3*nd; ++i)
-        J[i] = 1.;
+      RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, 3*nd),
+        RAJA_LAMBDA(RAJA::Index_type i)
+        {
+          J[i] = 1.0;
+        });
     }
   }
   return true;
