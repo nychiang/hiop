@@ -204,35 +204,35 @@ int main(int argc, char **argv)
 
   //test 4
   {
-    bool convex_obj = false;
-    bool rankdefic_Jac_eq = true;
-    bool rankdefic_Jac_ineq = true;
+  //   bool convex_obj = false;
+  //   bool rankdefic_Jac_eq = true;
+  //   bool rankdefic_Jac_ineq = true;
     
-    hiopInterfaceMDS* nlp_interface = new Ex5(n_sp, n_de, convex_obj, rankdefic_Jac_eq, rankdefic_Jac_ineq);
+  //   hiopInterfaceMDS* nlp_interface = new Ex5(n_sp, n_de, convex_obj, rankdefic_Jac_eq, rankdefic_Jac_ineq);
     
-    hiopNlpMDS nlp(*nlp_interface);
+  //   hiopNlpMDS nlp(*nlp_interface);
     
-    nlp.options->SetStringValue("dualsUpdateType", "linear");
-    nlp.options->SetStringValue("dualsInitialization", "zero");
+  //   nlp.options->SetStringValue("dualsUpdateType", "linear");
+  //   nlp.options->SetStringValue("dualsInitialization", "zero");
     
-    nlp.options->SetStringValue("Hessian", "analytical_exact");
-    //nlp.options->SetStringValue("KKTLinsys", "xdycyd");
-    nlp.options->SetStringValue("compute_mode", "hybrid");
+  //   nlp.options->SetStringValue("Hessian", "analytical_exact");
+  //   //nlp.options->SetStringValue("KKTLinsys", "xdycyd");
+  //   nlp.options->SetStringValue("compute_mode", "hybrid");
     
-    nlp.options->SetIntegerValue("verbosity_level", 3);
-    nlp.options->SetNumericValue("mu0", 1e-1);
-    hiopAlgFilterIPMNewton solver(&nlp);
-    status4 = solver.run();
-    obj_value4 = solver.getObjective();
+  //   nlp.options->SetIntegerValue("verbosity_level", 3);
+  //   nlp.options->SetNumericValue("mu0", 1e-1);
+  //   hiopAlgFilterIPMNewton solver(&nlp);
+  //   status4 = solver.run();
+  //   obj_value4 = solver.getObjective();
     
-    delete nlp_interface;
+  //   delete nlp_interface;
     
-    if(status4<0) {
-      if(rank==0)
-	printf("solve4 trouble: returned %d (with objective is %18.12e)\n",
-	       status4, obj_value4);
-      return -1;
-    }
+  //   if(status4<0) {
+  //     if(rank==0)
+	// printf("solve4 trouble: returned %d (with objective is %18.12e)\n",
+	//        status4, obj_value4);
+  //     return -1;
+  //   }
   } //end of test 4
 
   bool selfcheck_ok=true;
@@ -253,14 +253,17 @@ int main(int argc, char **argv)
 	     "dense variables did. BTW, obj=%18.12e was returned by HiOp.\n", obj_value3);
       selfcheck_ok = false;
     }
-    if(fabs(obj_value4-(-1.35649999989221e+03))>1e-6) {
-      printf("selfcheck4: objective mismatch for Ex5 MDS problem with 400 sparse variables and 100 "
-	     "dense variables did. BTW, obj=%18.12e was returned by HiOp.\n", obj_value4);
-      selfcheck_ok = false;
-    }
+    // if(fabs(obj_value4-(-1.35649999989221e+03))>1e-6) {
+    //   printf("selfcheck4: objective mismatch for Ex5 MDS problem with 400 sparse variables and 100 "
+	  //    "dense variables did. BTW, obj=%18.12e was returned by HiOp.\n", obj_value4);
+    //   selfcheck_ok = false;
+    // }
 
     if(false == selfcheck_ok)
+    {
+      std::cout << "Selfcheck failed!\n";
       return -1;
+    }
   } else {
     if(rank==0) {
       printf("Optimal objective 1: %22.14e. Solver status: %d\n", obj_value1, status1);
@@ -276,5 +279,6 @@ int main(int argc, char **argv)
   MPI_Finalize();
 #endif
 
+  std::cout << "Return successful!\n";
   return 0;
 }
