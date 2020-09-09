@@ -5,7 +5,7 @@
 
 //this include is not needed in general
 //we use hiopMatrixDense in this particular example for convienience
-#include "hiopMatrixDenseRowMajor.hpp" 
+#include <hiopMatrixRajaDense.hpp>
 #include "hiopLinAlgFactory.hpp"
 
 #ifdef HIOP_USE_MPI
@@ -43,12 +43,12 @@
 class Ex4 : public hiop::hiopInterfaceMDS
 {
 public:
-  Ex4(int ns_, std::string mem_space="default")
+  Ex4(int ns_, std::string mem_space)
     : Ex4(ns_, ns_, mem_space)
   {
   }
   
-  Ex4(int ns_, int nd_, std::string mem_space="default");
+  Ex4(int ns_, int nd_, std::string mem_space);
 
   virtual ~Ex4();
   
@@ -153,12 +153,12 @@ protected:
 class Ex4OneCallCons : public Ex4
 {
   public:
-    Ex4OneCallCons(int ns_in, std::string mem_space="default")
+    Ex4OneCallCons(int ns_in, std::string mem_space)
       : Ex4(ns_in, mem_space)
     {
     }
 
-    Ex4OneCallCons(int ns_in, int nd_in, std::string mem_space="default")
+    Ex4OneCallCons(int ns_in, int nd_in, std::string mem_space)
       : Ex4(ns_in, nd_in, mem_space)
     {
     }

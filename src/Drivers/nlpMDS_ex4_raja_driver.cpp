@@ -100,6 +100,7 @@ int main(int argc, char **argv)
 #endif
 
   std::string mem_space = "default";
+  hiop::LinearAlgebraFactory::set_mem_space(mem_space);
 
   bool selfCheck, one_call_cons;
   long long n_sp, n_de;

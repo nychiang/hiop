@@ -32,11 +32,11 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
 {
   // Make sure mem_space_ is uppercase
   transform(mem_space_.begin(), mem_space_.end(), mem_space_.begin(), ::toupper);
-  if(mem_space_ == "DEFAULT")
+  if(mem_space_ == "DEFAULT" || mem_space_ == "default")
     mem_space_ = "HOST";
 
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator allocator  = resmgr.getAllocator(mem_space_);
+  umpire::Allocator allocator  = resmgr.getAllocator("HOST");
 
   if(ns<0)
   {
@@ -47,27 +47,35 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
     if(4*(ns/4) != ns)
     {
       ns = 4*((4+ns)/4);
-      printf("[warning] number (%d) of sparse vars is not a multiple ->was altered to %d\n", 
-          ns_, ns); 
+      std::cout << "[warning] number " << ns_ 
+                << " of sparse vars is not a multiple ->was altered to " << ns
+                << "\n";
     }
   }
 
-  if(nd_<0) nd=0;
-  else nd = nd_;
+  if(nd_<0) 
+    nd=0;
+  else
+    nd = nd_;
 
-  Q  = hiop::LinearAlgebraFactory::createMatrixDense(nd,nd);
+  // For now this is creating hiopMatrixDenseRowMajor object
+  Q = hiop::LinearAlgebraFactory::createMatrixDense(nd,nd);
+  // Q = new hiop::hiopMatrixRajaDense(nd, nd, mem_space_);
   Q->setToConstant(1e-8);
   Q->addDiagonal(2.);
 
-  /// TODO: figure out how to effectively run this in kernel
-  /// Perhaps this should always run on host?
-  double** Qa = Q->local_data();
-  for(int i=1; i<nd-1; i++) {
-    Qa[i][i+1] = 1.;
-    Qa[i+1][i] = 1.;
-  }
+  double* data = Q->local_buffer();
+  RAJA::View<double, RAJA::Layout<2>> Mview(data, nd, nd);
+  RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(1, nd-1),
+    RAJA_LAMBDA(RAJA::Index_type i)
+  {
+    Mview(i,   i+1) = 1.0;
+    Mview(i+1, i)   = 1.0;
+  });
 
+  // For now this is creating hiopMatrixDenseRowMajor object
   Md = hiop::LinearAlgebraFactory::createMatrixDense(ns,nd);
+  // Md = new hiop::hiopMatrixRajaDense(ns, nd, mem_space_);
   Md->setToConstant(-1.0);
 
   _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
@@ -447,9 +455,10 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
     if(num_cons == ns && ns > static_cast<int>(idx_cons[0]))
     {
       //assert(num_cons==ns);
+      double* data = JacD[0];
       auto& rm = umpire::ResourceManager::getInstance();
-      // rm.copy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
-      memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
+      // rm.copy(data, Md->local_buffer(), ns*nd*sizeof(double));
+      memcpy(data, Md->local_buffer(), ns*nd*sizeof(double));
     }
 
     if(num_cons==3 && haveIneq && ns>0)
