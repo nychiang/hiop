@@ -342,7 +342,7 @@ if (HIOP_WITH_MAKETEST)
     foreach(iter 1 2)
       add_test(
         NAME "CompareExample4_NumIterations_${iter}" 
-        COMMAND bash -c "${RUNCMD} \
+        COMMAND bash -c "\
         if [[ $(wc -l ${PROJECT_BINARY_DIR}/mds4_${iter}.out|cut -f1 -d' ') == $(wc -l ${PROJECT_BINARY_DIR}/mds4_raja_${iter}.out|cut -f1 -d' ') ]]
           then
             echo 'Output tables have the same number of iterations.'
@@ -353,14 +353,14 @@ if (HIOP_WITH_MAKETEST)
           fi")
       add_test(
         NAME "CompareExample4_ElementWise_${iter}"
-        COMMAND bash -c "${RUNCMD} \
+        COMMAND bash -c "\
           join ${PROJECT_BINARY_DIR}/mds4_${iter}.out ${PROJECT_BINARY_DIR}/mds4_raja_${iter}.out \
           | ${PROJECT_SOURCE_DIR}/tests/testEx4CompareIterations.awk")
     endforeach()
   endif()
 
   add_test(NAME NlpMixedDenseSparse5_1 COMMAND bash -c "${RUNCMD} $<TARGET_FILE:nlpMDS_ex5.exe> 100 40 -selfcheck")
-  if(HIOP_BUILD_SHARED)
+  if(HIOP_BUILD_SHARED AND NOT HIOP_USE_GPU)
     add_test(NAME NlpMixedDenseSparseCinterface COMMAND bash -c "${RUNCMD} $<TARGET_FILE:nlpMDS_cex4.exe>")
   endif()
 endif(HIOP_WITH_MAKETEST)
