@@ -13,25 +13,6 @@
 #include <umpire/ResourceManager.hpp>
 #include <RAJA/RAJA.hpp>
 
-#ifdef HIOP_USE_GPU
-#define MEM_SPACE_HOST "HOST"
-#define MEM_SPACE_DEV "HOST"
-using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
-using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
-using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
-#ifndef RAJA_LAMBDA
-#define RAJA_LAMBDA [=]
-#endif
-#else
-#define MEM_SPACE_HOST "HOST"
-#define MEM_SPACE_DEV "HOST"
-using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
-using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
-using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
-#ifndef RAJA_LAMBDA
-#define RAJA_LAMBDA [=]
-#endif
-#endif
 
 using namespace hiop;
 
@@ -118,9 +99,7 @@ int main(int argc, char **argv)
   magma_init();
 #endif
 
-  auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator hostalloc  = resmgr.getAllocator(MEM_SPACE_HOST);
-  umpire::Allocator devalloc  = resmgr.getAllocator(MEM_SPACE_DEV);
+  std::string mem_space = "default";
 
   bool selfCheck, one_call_cons;
   long long n_sp, n_de;
@@ -134,10 +113,13 @@ int main(int argc, char **argv)
 
   //user's NLP -> implementation of hiop::hiopInterfaceMDS
   Ex4* my_nlp;
-  if(one_call_cons) {
-    my_nlp = new Ex4OneCallCons(n_sp, n_de);
-  } else {
-    my_nlp = new Ex4(n_sp, n_de);
+  if(one_call_cons)
+  {
+    my_nlp = new Ex4OneCallCons(n_sp, n_de, mem_space);
+  }
+  else
+  {
+    my_nlp = new Ex4(n_sp, n_de, mem_space);
   }
 
   hiopNlpMDS nlp(*my_nlp);
@@ -148,7 +130,7 @@ int main(int argc, char **argv)
   nlp.options->SetStringValue("Hessian", "analytical_exact");
   nlp.options->SetStringValue("KKTLinsys", "xdycyd");
   nlp.options->SetStringValue("compute_mode", "hybrid");
-  nlp.options->SetStringValue("mem_space", "default");
+  nlp.options->SetStringValue("mem_space", mem_space.c_str());
 
   nlp.options->SetIntegerValue("verbosity_level", 3);
   nlp.options->SetNumericValue("mu0", 1e-1);
@@ -178,10 +160,10 @@ int main(int argc, char **argv)
   long long n_vars, n_cons;
   my_nlp->get_prob_sizes(n_vars, n_cons);
 
-  auto* x = static_cast<double*>(hostalloc.allocate(n_vars * sizeof(double)));
-  auto* zl = static_cast<double*>(hostalloc.allocate(n_vars * sizeof(double)));
-  auto* zu = static_cast<double*>(hostalloc.allocate(n_vars * sizeof(double)));
-  auto* lambdas = static_cast<double*>(hostalloc.allocate(n_cons * sizeof(double)));
+  double* x       = hiop::LinearAlgebraFactory::createRawArray(n_vars);
+  double* zl      = hiop::LinearAlgebraFactory::createRawArray(n_vars);
+  double* zu      = hiop::LinearAlgebraFactory::createRawArray(n_vars);
+  double* lambdas = hiop::LinearAlgebraFactory::createRawArray(n_cons);
 
   solver.getSolution(x);
   solver.getDualSolutions(zl, zu, lambdas);

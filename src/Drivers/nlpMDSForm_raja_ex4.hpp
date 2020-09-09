@@ -43,12 +43,12 @@
 class Ex4 : public hiop::hiopInterfaceMDS
 {
 public:
-  Ex4(int ns_)
-    : Ex4(ns_, ns_)
+  Ex4(int ns_, std::string mem_space="default")
+    : Ex4(ns_, ns_, mem_space)
   {
   }
   
-  Ex4(int ns_, int nd_);
+  Ex4(int ns_, int nd_, std::string mem_space="default");
 
   virtual ~Ex4();
   
@@ -137,9 +137,11 @@ public:
   
 protected:
   int ns, nd;
-  hiop::hiopMatrixDense *Q, *Md;
+  hiop::hiopMatrixDense* Q;
+  hiop::hiopMatrixDense* Md;
   double* _buf_y;
   bool haveIneq;
+  std::string mem_space_;
 
   /* Internal buffers to store primal-dual solution */
   double* sol_x_;
@@ -151,13 +153,13 @@ protected:
 class Ex4OneCallCons : public Ex4
 {
   public:
-    Ex4OneCallCons(int ns_in)
-      : Ex4(ns_in)
+    Ex4OneCallCons(int ns_in, std::string mem_space="default")
+      : Ex4(ns_in, mem_space)
     {
     }
 
-    Ex4OneCallCons(int ns_in, int nd_in)
-      : Ex4(ns_in, nd_in)
+    Ex4OneCallCons(int ns_in, int nd_in, std::string mem_space="default")
+      : Ex4(ns_in, nd_in, mem_space)
     {
     }
 

@@ -4,40 +4,48 @@
 #include <umpire/ResourceManager.hpp>
 #include <RAJA/RAJA.hpp>
 
-#ifdef HIOP_USE_GPU
-#define MEM_SPACE_HOST "HOST"
-#define MEM_SPACE_DEV "HOST"
-using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
-using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
-using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
-#ifndef RAJA_LAMBDA
-#define RAJA_LAMBDA [=]
-#endif
+
+#if 0 //#ifdef HIOP_USE_GPU
+  #include "cuda.h"
+  #define RAJA_CUDA_BLOCK_SIZE 128
+  using HIOP_RAJA_EXEC   = RAJA::cuda_exec<RAJA_CUDA_BLOCK_SIZE>;
+  using HIOP_RAJA_REDUCE = RAJA::cuda_reduce;
+  using HIOP_RAJA_ATOMIC = RAJA::cuda_atomic;
+  #define RAJA_LAMBDA [=] __device__
 #else
-#define MEM_SPACE_HOST "HOST"
-#define MEM_SPACE_DEV "HOST"
-using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
-using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
-using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
-#ifndef RAJA_LAMBDA
-#define RAJA_LAMBDA [=]
+  using HIOP_RAJA_EXEC   = RAJA::omp_parallel_for_exec;
+  using HIOP_RAJA_REDUCE = RAJA::omp_reduce;
+  using HIOP_RAJA_ATOMIC = RAJA::omp_atomic;
+  #define RAJA_LAMBDA [=]
 #endif
-#endif
+
 
 using namespace hiop;
 
-Ex4::Ex4(int ns_, int nd_)
-  : ns(ns_), sol_x_(NULL), sol_zl_(NULL), sol_zu_(NULL), sol_lambda_(NULL)
+Ex4::Ex4(int ns_, int nd_, std::string mem_space)
+  : mem_space_(mem_space), 
+    ns(ns_),
+    sol_x_(NULL),
+    sol_zl_(NULL),
+    sol_zu_(NULL),
+    sol_lambda_(NULL)
 {
+  // Make sure mem_space_ is uppercase
+  transform(mem_space_.begin(), mem_space_.end(), mem_space_.begin(), ::toupper);
+  if(mem_space_ == "DEFAULT")
+    mem_space_ = "HOST";
 
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator hostalloc  = resmgr.getAllocator(MEM_SPACE_HOST);
-  umpire::Allocator devalloc  = resmgr.getAllocator(MEM_SPACE_DEV);
+  umpire::Allocator allocator  = resmgr.getAllocator(mem_space_);
 
-  if(ns<0) {
+  if(ns<0)
+  {
     ns = 0;
-  } else {
-    if(4*(ns/4) != ns) {
+  }
+  else
+  {
+    if(4*(ns/4) != ns)
+    {
       ns = 4*((4+ns)/4);
       printf("[warning] number (%d) of sparse vars is not a multiple ->was altered to %d\n", 
           ns_, ns); 
@@ -62,7 +70,7 @@ Ex4::Ex4(int ns_, int nd_)
   Md = hiop::LinearAlgebraFactory::createMatrixDense(ns,nd);
   Md->setToConstant(-1.0);
 
-  _buf_y = static_cast<double*>(hostalloc.allocate(nd * sizeof(double)));
+  _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
 
   haveIneq = true;
 }
@@ -70,14 +78,14 @@ Ex4::Ex4(int ns_, int nd_)
 Ex4::~Ex4()
 {
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator hostalloc = resmgr.getAllocator(MEM_SPACE_HOST);
+  umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
   /// @todo replace these with device allocator once all allocations are
   /// moved to device
-  hostalloc.deallocate(_buf_y);
-  hostalloc.deallocate(sol_lambda_);
-  hostalloc.deallocate(sol_zu_);
-  hostalloc.deallocate(sol_zl_);
-  hostalloc.deallocate(sol_x_);
+  allocator.deallocate(_buf_y);
+  allocator.deallocate(sol_lambda_);
+  allocator.deallocate(sol_zu_);
+  allocator.deallocate(sol_zl_);
+  allocator.deallocate(sol_x_);
   delete Md;
   delete Q;
 }
@@ -567,13 +575,13 @@ void Ex4::set_solution_primal(const double* x_vec)
   auto* x = const_cast<double*>(x_vec);
 
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator hostalloc = resmgr.getAllocator("HOST");
+  umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
 
   umpire::util::AllocationRecord record{x, sizeof(double) * n,
-    hostalloc.getAllocationStrategy()};
+    allocator.getAllocationStrategy()};
   resmgr.registerAllocation(x, record);
   if(NULL == sol_x_) {
-    sol_x_ = static_cast<double*>(hostalloc.allocate(n * sizeof(double)));
+    sol_x_ = static_cast<double*>(allocator.allocate(n * sizeof(double)));
   }
   resmgr.copy(sol_x_, x);
 }
@@ -589,29 +597,29 @@ void Ex4::set_solution_duals(const double* zl_vec, const double* zu_vec, const d
   auto* lambda = const_cast<double*>(lambda_vec);
 
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator hostalloc = resmgr.getAllocator("HOST");
+  umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
 
-  umpire::util::AllocationRecord zl_record{zl, sizeof(double) * n, hostalloc.getAllocationStrategy()};
+  umpire::util::AllocationRecord zl_record{zl, sizeof(double) * n, allocator.getAllocationStrategy()};
   resmgr.registerAllocation(zl, zl_record);
   if(NULL == sol_zl_)
   {
-    sol_zl_ = static_cast<double*>(hostalloc.allocate(n * sizeof(double)));
+    sol_zl_ = static_cast<double*>(allocator.allocate(n * sizeof(double)));
   }
   resmgr.copy(sol_zl_, zl);
 
-  umpire::util::AllocationRecord zu_record{zu, sizeof(double) * n, hostalloc.getAllocationStrategy()};
+  umpire::util::AllocationRecord zu_record{zu, sizeof(double) * n, allocator.getAllocationStrategy()};
   resmgr.registerAllocation(zu, zu_record);
   if(NULL == sol_zu_)
   {
-    sol_zu_ = static_cast<double*>(hostalloc.allocate(n * sizeof(double)));
+    sol_zu_ = static_cast<double*>(allocator.allocate(n * sizeof(double)));
   }
   resmgr.copy(sol_zu_, zu);
 
-  umpire::util::AllocationRecord lambda_record{lambda, sizeof(double) * m, hostalloc.getAllocationStrategy()};
+  umpire::util::AllocationRecord lambda_record{lambda, sizeof(double) * m, allocator.getAllocationStrategy()};
   resmgr.registerAllocation(lambda, lambda_record);
   if(NULL == sol_lambda_)
   {
-    sol_lambda_ = static_cast<double*>(hostalloc.allocate(m * sizeof(double)));
+    sol_lambda_ = static_cast<double*>(allocator.allocate(m * sizeof(double)));
   }
   resmgr.copy(sol_lambda_, lambda);
 }
