@@ -27,7 +27,6 @@
 .pnnl_script_template: &pnnl_script_definition
   script:
     - |
-      set -xv
       #
       #  NOTES:  WORKDIR is on constance/marianas/newell
       #          ./      is only on the Kubernetes instance
@@ -40,7 +39,7 @@
       touch output
       tail -f output &
       tailpid=$!
-      sbatch -A EXASGD --export=MY_CLUSTER=$CLUSTER -p $SLURM_Q -t 1:00:00 --gres=gpu:1 -o output -e output $WORKDIR/BUILD.sh
+      sbatch -A EXASGD -p $SLURM_Q -t 1:00:00 --gres=gpu:1 -o output -e output $WORKDIR/BUILD.sh
       res=1
       set +xv
       while :;
@@ -81,6 +80,7 @@ build_on_marianas:
   stage: build
   variables:
     SLURM_Q: "dl"
+    MY_CLUSTER: "marianas"
   <<: *pnnl_tags_definition
   <<: *pnnl_script_definition
   only:
@@ -91,6 +91,7 @@ build_on_newell:
   stage: build
   variables:
     SLURM_Q: "newell_shared"
+    MY_CLUSTER: "newell"
   <<: *pnnl_tags_definition
   <<: *pnnl_script_definition
   only:
