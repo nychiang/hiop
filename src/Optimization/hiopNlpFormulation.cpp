@@ -504,26 +504,20 @@ bool hiopNlpFormulation::eval_grad_f(double* x, bool new_x, double* gradf)
   return bret;
 }
 
-bool hiopNlpFormulation::get_starting_point(hiopVector& x0,
+bool hiopNlpFormulation::get_starting_point(hiopVector& x0_for_hiop,
 					    bool& duals_avail,
-					    hiopVector& zL0, hiopVector& zU0,
-					    hiopVector& yc0, hiopVector& yd0)
+					    hiopVector& zL0_for_hiop, hiopVector& zU0_for_hiop,
+					    hiopVector& yc0_for_hiop, hiopVector& yd0_for_hiop)
 {
   //aaa
-  hiopVectorPar &x0_for_hiop = dynamic_cast<hiopVectorPar&>(x0);
-  hiopVectorPar& zL0_for_hiop = dynamic_cast<hiopVectorPar&>(zL0);
-  hiopVectorPar& zU0_for_hiop = dynamic_cast<hiopVectorPar&>(zU0);
-  hiopVectorPar& yc0_for_hiop = dynamic_cast<hiopVectorPar&>(yc0);
-  hiopVectorPar& yd0_for_hiop = dynamic_cast<hiopVectorPar&>(yd0);
-  
   bool bret; 
 
-  hiopVectorPar lambdas(yc0.get_size() + yd0.get_size());
+  hiopVector* lambdas = hiop::LinearAlgebraFactory::createVector(yc0_for_hiop.get_size() + yd0_for_hiop.get_size());
   
   double* x0_for_user = nlp_transformations.applyTox(x0_for_hiop.local_data(),true);
   double* zL0_for_user = zL0_for_hiop.local_data();
   double* zU0_for_user = zU0_for_hiop.local_data();
-  double* lambda_for_user = lambdas.local_data();
+  double* lambda_for_user = lambdas->local_data();
   
   bret = interface_base.get_starting_point(nlp_transformations.n_post(), n_cons,
 					   x0_for_user,
@@ -535,8 +529,8 @@ bool hiopNlpFormulation::get_starting_point(hiopVector& x0,
     double* yc0d = yc0_for_hiop.local_data();
     double* yd0d = yd0_for_hiop.local_data();
 
-    assert(n_cons_eq   == yc0.get_size() && "when did the cons change?");
-    assert(n_cons_ineq == yd0.get_size() && "when did the cons change?");
+    assert(n_cons_eq   == yc0_for_hiop.get_size() && "when did the cons change?");
+    assert(n_cons_ineq == yd0_for_hiop.get_size() && "when did the cons change?");
     assert(n_cons_eq+n_cons_ineq == n_cons);
     
     //copy back 
@@ -689,8 +683,8 @@ bool hiopNlpFormulation::eval_Jac_c_d(double* x, bool new_x, hiopMatrix& Jac_c, 
 void hiopNlpFormulation::
 get_dual_solutions(const hiopIterate& it, double* zl_a, double* zu_a, double* lambda_a)
 {
-  const hiopVectorPar& zl = dynamic_cast<hiopVectorPar&>(*it.get_zl());
-  const hiopVectorPar& zu = dynamic_cast<hiopVectorPar&>(*it.get_zu());
+  const hiopVector& zl = *it.get_zl();
+  const hiopVector& zu = *it.get_zu();
   zl.copyTo(zl_a);
   zu.copyTo(zu_a);
 
@@ -702,8 +696,8 @@ void hiopNlpFormulation::copy_EqIneq_to_cons(const hiopVector& yc_in,
 					     int num_cons, //size of 'cons'
 					     double* cons)
 {
-  const double* yc_arr = dynamic_cast<const hiopVectorPar&>(yc_in).local_data_const();
-  const double* yd_arr = dynamic_cast<const hiopVectorPar&>(yd_in).local_data_const();
+  const double* yc_arr = yc_in.local_data_const();
+  const double* yd_arr = yd_in.local_data_const();
   assert(num_cons == n_cons);
   assert(yc_in.get_size() + yd_in.get_size() == n_cons);
     //concatanate multipliers -> copy into whole lambda array 
@@ -725,11 +719,7 @@ void hiopNlpFormulation::user_callback_solution(hiopSolveStatus status,
 						const hiopVector& y_d,
 						double obj_value) 
 {
-  const hiopVectorPar& xp = dynamic_cast<const hiopVectorPar&>(x);
-  const hiopVectorPar& zl = dynamic_cast<const hiopVectorPar&>(z_L);
-  const hiopVectorPar& zu = dynamic_cast<const hiopVectorPar&>(z_U);
-
-  assert(xp.get_size()==n_vars);
+  assert(x.get_size()==n_vars);
   assert(y_c.get_size() == n_cons_eq);
   assert(y_d.get_size() == n_cons_ineq);
 
@@ -749,8 +739,8 @@ void hiopNlpFormulation::user_callback_solution(hiopSolveStatus status,
   //! zl and zu may have different sizes than what user expects since HiOp removes
   //! variables internally
   interface_base.solution_callback(status, 
-				   (int)n_vars, xp.local_data_const(),
-				   zl.local_data_const(), zu.local_data_const(),
+				   (int)n_vars, x.local_data_const(),
+				   z_L.local_data_const(), z_U.local_data_const(),
 				   (int)n_cons, cons_body_,
 				   cons_lambdas_,
 				   obj_value);
@@ -772,10 +762,7 @@ bool hiopNlpFormulation::user_callback_iterate(int iter,
 					       double alpha_pr,
 					       int ls_trials)
 {
-  const hiopVectorPar& xp = dynamic_cast<const hiopVectorPar&>(x);
-  const hiopVectorPar& zl = dynamic_cast<const hiopVectorPar&>(z_L);
-  const hiopVectorPar& zu = dynamic_cast<const hiopVectorPar&>(z_U);
-  assert(xp.get_size()==n_vars);
+  assert(x.get_size()==n_vars);
   assert(c.get_size()+d.get_size()==n_cons);
 
   assert(y_c.get_size() == n_cons_eq);
@@ -798,8 +785,8 @@ bool hiopNlpFormulation::user_callback_iterate(int iter,
   //! variables internally
   
   return interface_base.iterate_callback(iter, obj_value, 
-					 (int)n_vars, xp.local_data_const(),
-					 zl.local_data_const(), zu.local_data_const(),
+					 (int)n_vars, x.local_data_const(),
+					 z_L.local_data_const(), z_U.local_data_const(),
 					 (int)n_cons, cons_body_, 
 					 cons_lambdas_,
 					 inf_pr, inf_du, mu, alpha_du, alpha_pr,  ls_trials);

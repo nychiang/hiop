@@ -579,7 +579,7 @@ void hiopAlgFilterIPMBase::getSolution(double* x) const
     nlp->log->
       printf(hovWarning, "getSolution: HiOp has not completed yet and solution returned may not be optimal.");
   }
-  hiopVectorPar& it_x = dynamic_cast<hiopVectorPar&>(*it_curr->get_x());
+  hiopVector& it_x = *it_curr->get_x();
   //it_curr->get_x()->copyTo(x);
   nlp->user_x(it_x, x);
 }

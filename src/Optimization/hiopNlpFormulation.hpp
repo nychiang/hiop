@@ -173,8 +173,7 @@ public:
 
   inline long long n_local() const
   {
-    auto* xlvec = dynamic_cast<hiopVectorPar*>(xl);
-    return xlvec->get_local_size();
+    return xl->get_local_size();
   }
   inline long long n_low_local() const {return n_bnds_low_local;}
   inline long long n_upp_local() const {return n_bnds_upp_local;}
@@ -183,7 +182,7 @@ public:
   inline double user_obj(double hiop_f) { return nlp_transformations.applyToObj(hiop_f); }
   inline void   user_x(hiopVector& hiop_x, double* user_x) 
   { 
-    double *hiop_xa = dynamic_cast<hiopVectorPar&>( hiop_x ).local_data();
+    double *hiop_xa = hiop_x.local_data();
     double *user_xa = nlp_transformations.applyTox(hiop_xa,/*new_x=*/true); 
     //memcpy(user_x, user_xa, hiop_x.get_local_size()*sizeof(double));
     memcpy(user_x, user_xa, nlp_transformations.n_post_local()*sizeof(double));
