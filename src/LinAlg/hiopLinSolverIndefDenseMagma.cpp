@@ -124,10 +124,10 @@ namespace hiop
     return negEigVal;
   }
 
-  bool hiopLinSolverIndefDenseMagmaBuKa::solve(hiopVector& x_)
+  bool hiopLinSolverIndefDenseMagmaBuKa::solve(hiopVector& x)
   {
     assert(M_->n() == M_->m());
-    assert(x_.get_size() == M_->n());
+    assert(x.get_size() == M_->n());
     int N = M_->n();
     int LDA = N;
     int LDB = N;
@@ -136,12 +136,9 @@ namespace hiop
 
     nlp_->runStats.linsolv.tmTriuSolves.start();
     
-    hiopVectorPar* x = dynamic_cast<hiopVectorPar*>(&x_);
-    assert(x != NULL);
-
     char uplo='L'; // M is upper in C++ so it's lower in fortran
     int info;
-    DSYTRS(&uplo, &N, &NRHS, M_->local_buffer(), &LDA, ipiv, x->local_data(), &LDB, &info);
+    DSYTRS(&uplo, &N, &NRHS, M_->local_buffer(), &LDA, ipiv, x.local_data(), &LDB, &info);
     if(info<0) {
       nlp_->log->printf(hovError, "hiopLinSolverMagmaBuKa: (LAPACK) DSYTRS returned error %d\n", info);
       assert(false);

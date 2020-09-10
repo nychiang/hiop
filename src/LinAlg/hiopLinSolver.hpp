@@ -101,13 +101,10 @@ public:
   hiopLinSolverIndefDense(int n, hiopNlpFormulation* nlp);
   virtual ~hiopLinSolverIndefDense();
 
-  // inline hiopMatrixDenseRowMajor& sysMatrix() { return M; }
   hiopMatrixDense& sysMatrix();
 protected:
-  // hiopMatrixDenseRowMajor M;
   hiopMatrixDense* M_;
 protected:
-  // hiopLinSolverIndefDense() : M(0,0) { assert(false); }
   hiopLinSolverIndefDense();
 };
 

@@ -170,21 +170,18 @@ public:
   /** solves a linear system.
    * param 'x' is on entry the right hand side(s) of the system to be solved. On
    * exit is contains the solution(s).  */
-  bool solve ( hiopVector& x_ )
+  bool solve ( hiopVector& x )
   {
     assert(M_->n() == M_->m());
-    assert(x_.get_size()==M_->n());
+    assert(x.get_size()==M_->n());
     int N=M_->n(), LDA = N, info;
     if(N==0) return true;
 
     nlp_->runStats.linsolv.tmTriuSolves.start();
     
-    hiopVectorPar* x = dynamic_cast<hiopVectorPar*>(&x_);
-    assert(x != NULL);
-
     char uplo='L'; // M is upper in C++ so it's lower in fortran
     int NRHS=1, LDB=N;
-    DSYTRS(&uplo, &N, &NRHS, M_->local_buffer(), &LDA, ipiv, x->local_data(), &LDB, &info);
+    DSYTRS(&uplo, &N, &NRHS, M_->local_buffer(), &LDA, ipiv, x.local_data(), &LDB, &info);
     if(info<0) {
       nlp_->log->printf(hovError, "hiopLinSolverIndefDenseLapack: DSYTRS returned error %d\n", info);
     } else if(info>0) {
