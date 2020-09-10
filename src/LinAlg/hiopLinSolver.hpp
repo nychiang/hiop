@@ -51,7 +51,8 @@
 
 #include "hiopNlpFormulation.hpp"
 #include "hiopMatrix.hpp"
-#include "hiopVectorPar.hpp"
+#include "hiopMatrixDense.hpp"
+#include "hiopVector.hpp"
 
 #include "hiop_blasdefs.hpp"
 
@@ -100,11 +101,14 @@ public:
   hiopLinSolverIndefDense(int n, hiopNlpFormulation* nlp);
   virtual ~hiopLinSolverIndefDense();
 
-  inline hiopMatrixDenseRowMajor& sysMatrix() { return M; }
+  // inline hiopMatrixDenseRowMajor& sysMatrix() { return M; }
+  hiopMatrixDense& sysMatrix();
 protected:
-  hiopMatrixDenseRowMajor M;
+  // hiopMatrixDenseRowMajor M;
+  hiopMatrixDense* M_;
 protected:
-  hiopLinSolverIndefDense() : M(0,0) { assert(false); }
+  // hiopLinSolverIndefDense() : M(0,0) { assert(false); }
+  hiopLinSolverIndefDense();
 };
 
 } //end namespace
