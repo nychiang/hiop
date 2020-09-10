@@ -371,7 +371,7 @@ if (HIOP_WITH_MAKETEST)
       echo 'The test case did not converge but we will allow this test to pass.'
       exit 0
     else
-      exit 1
+      exit $ret
     fi
     ")
   if(HIOP_BUILD_SHARED AND NOT HIOP_USE_GPU)
