@@ -160,11 +160,13 @@ hiopVectorRajaPar::hiopVectorRajaPar(const hiopVectorRajaPar& v)
   glob_il_ = v.glob_il_;
   glob_iu_ = v.glob_iu_;
   comm_ = v.comm_;
+  mem_space_ = v.mem_space_;
 
 #ifndef HIOP_USE_GPU
   mem_space_ = "HOST"; // If no GPU support, fall back to host!
 #endif
 
+  // std::cout << "Memory space: " << mem_space_ << "\n";
   auto& resmgr = umpire::ResourceManager::getInstance();
   umpire::Allocator devalloc  = resmgr.getAllocator(mem_space_);
   data_dev_ = static_cast<double*>(devalloc.allocate(n_local_*sizeof(double)));
@@ -178,7 +180,6 @@ hiopVectorRajaPar::hiopVectorRajaPar(const hiopVectorRajaPar& v)
   {
     data_host_ = data_dev_;
   }
-  //std::cout << "Memory space: " << mem_space_ << "\n";
 }
 
 hiopVectorRajaPar::~hiopVectorRajaPar()
@@ -195,14 +196,14 @@ hiopVectorRajaPar::~hiopVectorRajaPar()
   data_host_ = nullptr;
 }
 
-hiopVectorRajaPar* hiopVectorRajaPar::alloc_clone() const
+hiopVector* hiopVectorRajaPar::alloc_clone() const
 {
-  hiopVectorRajaPar* v = new hiopVectorRajaPar(*this); assert(v);
+  hiopVector* v = new hiopVectorRajaPar(*this); assert(v);
   return v;
 }
-hiopVectorRajaPar* hiopVectorRajaPar::new_copy () const
+hiopVector* hiopVectorRajaPar::new_copy () const
 {
-  hiopVectorRajaPar* v = new hiopVectorRajaPar(*this); assert(v);
+  hiopVector* v = new hiopVectorRajaPar(*this); assert(v);
   v->copyFrom(*this);
   return v;
 }

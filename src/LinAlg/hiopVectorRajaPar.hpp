@@ -132,8 +132,8 @@ public:
   virtual void selectPattern(const hiopVector& ix);
   virtual bool matchesPattern(const hiopVector& ix);
 
-  virtual hiopVectorRajaPar* alloc_clone() const;
-  virtual hiopVectorRajaPar* new_copy () const;
+  virtual hiopVector* alloc_clone() const;
+  virtual hiopVector* new_copy () const;
 
   virtual void adjustDuals_plh(const hiopVector& x, const hiopVector& ix, const double& mu, const double& kappa);
 
