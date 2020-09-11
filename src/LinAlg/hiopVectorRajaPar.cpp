@@ -787,7 +787,8 @@ void hiopVectorRajaPar::axdzpy_w_pattern(
     RAJA_LAMBDA(RAJA::Index_type i) 
     {
       assert(id[i] == one || id[i] == zero);
-      yd[i] += id[i] * alpha * xd[i] / zd[i];
+      if(id[i] == one)
+        yd[i] += alpha * xd[i] / zd[i];
     });
 }
 
