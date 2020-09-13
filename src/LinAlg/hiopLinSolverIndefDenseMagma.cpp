@@ -86,37 +86,39 @@ namespace hiop
     int posEigVal=0;
     int nullEigVal=0;
     double t=0;
-    double** MM = M_->get_M();
+    double* MM = M_->local_buffer();
     for(int k=0; k<N; k++) {
       //c       2 by 2 block
       //c       use det (d  s)  =  (d/t * c - t) * t  ,  t = dabs(s)
       //c               (s  c)
       //c       to avoid underflow/overflow troubles.
       //c       take two passes through scaling.  use  t  for flag.
-      double d = MM[k][k];
+      double d = MM[N*k + k];
       if(ipiv[k] <= 0) {
-	if(t==0) {
-	  assert(k+1<N);
-	  if(k+1<N) {
-	    t=fabs(MM[k][k+1]);
-	    d=(d/t) * MM[k+1][k+1]-t;
-	  }
-	} else {
-	  d=t;
-	  t=0.;
-	}
+        if(t==0) {
+          assert(k+1<N);
+          if(k+1<N) {
+            t=fabs(MM[N*k + (k+1)]);
+            d=(d/t) * MM[N*(k+1) + (k+1)]-t;
+          }
+        } else {
+          d=t;
+          t=0.;
+        }
       }
       //printf("d = %22.14e \n", d);
       //if(d<0) negEigVal++;
       if(d < -1e-14) {
-	negEigVal++;
+        negEigVal++;
       } else if(d < 1e-14) {
-	nullEigVal++;
-	//break;
+        nullEigVal++;
+        //break;
       } else {
-	posEigVal++;
+        posEigVal++;
       }
     }
+    // std::cout << "Using Magma factorization ...\n";
+    // std::cout << "Matrix inertia =(" << posEigVal << ", " << nullEigVal << ", " << negEigVal << ")\n";
     //printf("(pos,null,neg)=(%d,%d,%d)\n", posEigVal, nullEigVal, negEigVal);
     nlp_->runStats.linsolv.tmInertiaComp.stop();
     
