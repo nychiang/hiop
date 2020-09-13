@@ -86,16 +86,35 @@ void initializeSymSparseMat(hiop::hiopMatrixSparse* mat)
   local_ordinal_type m = A->m();
   local_ordinal_type n = A->n();
 
-  // set up to nnz upper triangular entries to one
-  for(auto i = 0; i < m; i++) 
+  int num_entries = n * m - (m * (m - 1) / 2);
+  int density = num_entries / nnz;
+
+  auto iRow_idx = 0;
+  auto jCol_idx = 0;
+
+  for (auto i = 0; i < num_entries; i++)
   {
-    for(auto j = i; j < n && nonZerosUsed < nnz; j++, nonZerosUsed++)
+    if(i % density == 0)
     {
-      iRow[nonZerosUsed] = i;
-      jCol[nonZerosUsed] = j;
-      val[nonZerosUsed] = one;
+      iRow[nonZerosUsed] = iRow_idx;
+      jCol[nonZerosUsed] = jCol_idx;
+      val[nonZerosUsed] = i;
+      nonZerosUsed++;
+      if(nnz == nonZerosUsed)
+      {
+        break;
+      } 
+    }
+
+    jCol_idx++;
+    // If we are at the end of the current row
+    if (jCol_idx % n == 0)
+    {
+      iRow_idx++;
+      jCol_idx = iRow_idx;
     }
   }
+  assert(nnz == nonZerosUsed && "incorrect amount of non-zeros in sparse sym matrix");
 }
 
 /**
@@ -114,16 +133,33 @@ void initializeRajaSymSparseMat(hiop::hiopMatrixSparse* mat)
   local_ordinal_type m = A->m();
   local_ordinal_type n = A->n();
 
-  // set up to nnz upper triangular entries to one
-  for(auto i = 0; i < m; i++) 
+  int num_entries = n * m - (m * (m - 1) / 2);
+  int density = num_entries / nnz;
+
+  auto iRow_idx = 0;
+  auto jCol_idx = 0;
+
+  for (auto i = 0; i < num_entries; i++)
   {
-    for(auto j = i; j < n && nonZerosUsed < nnz; j++, nonZerosUsed++)
+    if (i % density == 0)
     {
-      iRow[nonZerosUsed] = i;
-      jCol[nonZerosUsed] = j;
-      val[nonZerosUsed] = one;
+      iRow[nonZerosUsed] = iRow_idx;
+      jCol[nonZerosUsed] = jCol_idx;
+      val[nonZerosUsed] = i;
+      nonZerosUsed++;
+      if (nonZerosUsed == nnz)
+        break;
+    }
+
+    jCol_idx++;
+    // If we are at the end of the current row
+    if (jCol_idx % n == 0)
+    {
+      iRow_idx++;
+      jCol_idx = iRow_idx;
     }
   }
+  assert(nnz == nonZerosUsed && "incorrect amount of non-zeros in sparse sym matrix");
   A->copyToDev();
 }
 

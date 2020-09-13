@@ -175,9 +175,13 @@ int main(int argc, char** argv)
 
     fail += test.vectorMatchesPattern(x, y, rank);
     fail += test.vectorAdjustDuals_plh(x, y, z, *a, rank);
-    fail += test.vectorIsnan(x, rank);
-    fail += test.vectorIsinf(x, rank);
-    fail += test.vectorIsfinite(x, rank);
+
+    if (rank == 0)
+    {
+      fail += test.vectorIsnan(*v);
+      fail += test.vectorIsinf(*v);
+      fail += test.vectorIsfinite(*v);
+    }
 
     // Delete testing objects
     delete a;
@@ -254,9 +258,13 @@ int main(int argc, char** argv)
 
     fail += test.vectorMatchesPattern(x, y, rank);
     fail += test.vectorAdjustDuals_plh(x, y, z, *a, rank);
-    fail += test.vectorIsnan(x, rank);
-    fail += test.vectorIsinf(x, rank);
-    fail += test.vectorIsfinite(x, rank);
+
+    if (rank == 0)
+    {
+      fail += test.vectorIsnan(*v);
+      fail += test.vectorIsinf(*v);
+      fail += test.vectorIsfinite(*v);
+    }
 
     // Delete testing objects
     delete a;
