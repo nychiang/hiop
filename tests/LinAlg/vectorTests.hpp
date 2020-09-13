@@ -494,7 +494,10 @@ public:
     v.setToConstant(v_val);
     pattern.setToConstant(one);
     if (rank== 0)
+    {
       setLocalElement(&pattern, N - 1, zero);
+      setLocalElement(&x      , N - 1, zero);
+    }
 
     v.componentDiv_w_selectPattern(x, pattern);
 
@@ -677,7 +680,10 @@ public:
     v.setToConstant(v_val);
     pattern.setToConstant(one);
     if (rank== 0)
+    {
       setLocalElement(&pattern, N - 1, zero);
+      setLocalElement(&z,       N - 1, zero);
+    }
 
     const real_type expected = v_val + (alpha * x_val / z_val);
     v.axdzpy_w_pattern(alpha, x, z, pattern);
@@ -1107,21 +1113,19 @@ public:
 
     x.setToConstant(one);
 
-    dx.setToConstant(one);
+    // Test correct default value is returned for dx >= 0
+    dx.setToConstant(two);
     real_type result = x.fractionToTheBdry(dx, tau);
 
     real_type expected = one;
     fail += !isEqual(result, expected);
 
+    // Test minumum finding for dx < 0
     dx.setToConstant(-one);
+    setLocalElement(&dx, N-1, -two);
+
     result = x.fractionToTheBdry(dx, tau);
-    real_type aux;
-    expected = one;
-    for (local_ordinal_type i=0; i<N; i++)
-    {
-      aux = -tau * getLocalElement(&x, i) / getLocalElement(&dx, i);
-      if (aux<expected) expected=aux;
-    }
+    expected = quarter; // -0.5*1/(-2)
     fail += !isEqual(result, expected);
 
     printMessage(fail, __func__, rank);
@@ -1159,9 +1163,10 @@ public:
     // Pattern all ones except for one value, should still be default
     // value of one
     pattern.setToConstant(one);
-    if (rank == 0)
-      setLocalElement(&pattern, N-1, 0);
     dx.setToConstant(one);
+    setLocalElement(&pattern, N-1,  zero);
+    setLocalElement(&dx,      N-1, -half);
+
     result = x.fractionToTheBdry_w_pattern(dx, tau, pattern);
     expected = one;  // default value if dx >= 0
     fail += !isEqual(result, expected);
@@ -1169,15 +1174,10 @@ public:
     // Pattern all ones, dx will be <0
     pattern.setToConstant(one);
     dx.setToConstant(-one);
+    setLocalElement(&dx, N-1, -two);
+
     result = x.fractionToTheBdry_w_pattern(dx, tau, pattern);
-    real_type aux;
-    expected = one;
-    for (local_ordinal_type i=0; i<N; i++)
-    {
-      if (rank == 0 && i == N-1) continue;
-      aux = -tau * getLocalElement(&x, i) / getLocalElement(&dx, i);
-      if (aux<expected) expected=aux;
-    }
+    expected = quarter; // -0.5*1/(-2)
     fail += !isEqual(result, expected);
 
     printMessage(fail, __func__, rank);
