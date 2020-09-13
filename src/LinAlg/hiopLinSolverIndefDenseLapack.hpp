@@ -129,7 +129,7 @@ public:
     int posEigVal=0;
     int nullEigVal=0;
     double t=0;
-    double** MM = M_->get_M();
+    double** MM = M_->local_data();
     for(int k=0; k<N; k++) {
       //c       2 by 2 block
       //c       use det (d  s)  =  (d/t * c - t) * t  ,  t = dabs(s)
