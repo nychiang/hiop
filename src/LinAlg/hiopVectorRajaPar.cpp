@@ -665,7 +665,11 @@ void hiopVectorRajaPar::componentDiv_w_selectPattern( const hiopVector& vec, con
   RAJA::forall< hiop_raja_exec >( RAJA::RangeSegment(0, n_local_),
     RAJA_LAMBDA(RAJA::Index_type i)
     {
-      dd[i] = id[i]*dd[i]/vd[i];
+      assert(id[i] == zero || id[i] == one);
+      if(id[i] == zero)
+        dd[i] = zero;
+      else  
+        dd[i] /= vd[i];
     });
 }
 
@@ -786,7 +790,8 @@ void hiopVectorRajaPar::axdzpy_w_pattern(
     RAJA_LAMBDA(RAJA::Index_type i) 
     {
       assert(id[i] == one || id[i] == zero);
-      yd[i] += id[i] * alpha * xd[i] / zd[i];
+      if(id[i] == one)
+        yd[i] += alpha * xd[i] / zd[i];
     });
 }
 
@@ -819,6 +824,7 @@ void  hiopVectorRajaPar::addConstant_w_patternSelect(double c, const hiopVector&
   RAJA::forall< hiop_raja_exec >( RAJA::RangeSegment(0, n_local_),
     RAJA_LAMBDA(RAJA::Index_type i)
     {
+      assert(id[i] == one || id[i] == zero);
       data[i] += id[i]*c;
     });
 }
@@ -1127,17 +1133,20 @@ double hiopVectorRajaPar::fractionToTheBdry_w_pattern(
 #endif
   const double* dd = d.local_data_const();
   const double* xd = data_dev_;
-  const double* pat = s.local_data_const();
+  const double* id = s.local_data_const();
 
   RAJA::ReduceMin< hiop_raja_reduce, double > aux(one);
   RAJA::forall< hiop_raja_exec >( RAJA::RangeSegment(0, n_local_),
-    RAJA_LAMBDA(RAJA::Index_type i) {
-      if(dd[i] >= 0 || pat[i] == 0)
-        return;
+    RAJA_LAMBDA(RAJA::Index_type i)
+    {
+      assert(id[i] == one || id[i] == zero);
+      if(dd[i] < 0 && id[i] == one)
+      {
 #ifdef HIOP_DEEPCHECKS
-      assert(xd[i] > 0);
+        assert(xd[i] > 0);
 #endif
-      aux.min(-tau*xd[i]/dd[i]);
+        aux.min(-tau*xd[i]/dd[i]);
+      }
     });
   return aux.get();
 }
