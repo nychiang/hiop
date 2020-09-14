@@ -36,7 +36,7 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
     mem_space_ = "HOST";
 
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator allocator  = resmgr.getAllocator("HOST");
+  umpire::Allocator allocator  = resmgr.getAllocator(mem_space_);
 
   if(ns<0)
   {
@@ -60,7 +60,6 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
 
   // For now this is creating hiopMatrixDenseRowMajor object
   Q = hiop::LinearAlgebraFactory::createMatrixDense(nd,nd);
-  // Q = new hiop::hiopMatrixRajaDense(nd, nd, mem_space_);
   Q->setToConstant(1e-8);
   Q->addDiagonal(2.);
 
@@ -73,9 +72,7 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
     Mview(i+1, i)   = 1.0;
   });
 
-  // For now this is creating hiopMatrixDenseRowMajor object
   Md = hiop::LinearAlgebraFactory::createMatrixDense(ns,nd);
-  // Md = new hiop::hiopMatrixRajaDense(ns, nd, mem_space_);
   Md->setToConstant(-1.0);
 
   _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
@@ -87,8 +84,6 @@ Ex4::~Ex4()
 {
   auto& resmgr = umpire::ResourceManager::getInstance();
   umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
-  /// @todo replace these with device allocator once all allocations are
-  /// moved to device
   allocator.deallocate(_buf_y);
   allocator.deallocate(sol_lambda_);
   allocator.deallocate(sol_zu_);
@@ -101,7 +96,7 @@ Ex4::~Ex4()
 bool Ex4::get_prob_sizes(long long& n, long long& m)
 { 
   n=2*ns+nd;
-  m=ns+3*haveIneq; 
+  m=ns+3*( haveIneq ? 1 : 0 ); 
   return true; 
 }
 
@@ -141,11 +136,11 @@ bool Ex4::get_vars_info(const long long& n, double *xlow, double* xupp, Nonlinea
         /// workaround for now.
         if (i == 2*ns)
         {
-        xlow[i] = -4.;
+          xlow[i] = -4.;
         }
         else
         {
-        xlow[i] = -1e+20;
+          xlow[i] = -1e+20;
         }
       });
 
@@ -153,14 +148,14 @@ bool Ex4::get_vars_info(const long long& n, double *xlow, double* xupp, Nonlinea
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, ns),
       RAJA_LAMBDA(RAJA::Index_type i)
       {
-      xupp[i] = 3.;
+        xupp[i] = 3.;
       });
 
   //s
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(ns, 2*ns),
       RAJA_LAMBDA(RAJA::Index_type i)
       {
-      xupp[i] = +1e20;
+        xupp[i] = +1e20;
       });
 
   //y
@@ -173,15 +168,19 @@ bool Ex4::get_vars_info(const long long& n, double *xlow, double* xupp, Nonlinea
       /// remove conditional.
       if (i == 2*ns)
       {
-      xupp[i] = 4.;
+        xupp[i] = 4.;
       }
       else
       {
-      xupp[i] = 1e+20;
+        xupp[i] = 1e+20;
       }
       });
 
-  for(int i=0; i<n; ++i) type[i]=hiopNonlinear;
+  RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, n),
+      RAJA_LAMBDA(RAJA::Index_type i)
+      {
+        type[i] = hiopNonlinear;
+      });
   return true;
 }
 
@@ -200,25 +199,32 @@ bool Ex4::get_cons_info(const long long& m, double* clow, double* cupp, Nonlinea
   assert(m==ns+3*haveIneq);
   int i;
   //x+s - Md y = 0, i=1,...,ns
-  for(i=0; i<ns; i++) clow[i] = cupp[i] = 0.;
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, ns),
       RAJA_LAMBDA(RAJA::Index_type i)
       {
-      clow[i] = cupp[i] = 0.;
+        clow[i] = cupp[i] = 0.;
       });
 
-  /// @todo determine if _clow_ and _cupp_ will reside on host or device
-  if(haveIneq) {
-    // [-2  ]    [ x_1 + e^T s]   [e^T]      [ 2 ]
-    clow[i] = -2; cupp[i++] = 2.;
-    // [-inf] <= [ x_2        ] + [e^T] y <= [ 2 ]
-    clow[i] = -1e+20; cupp[i++] = 2.;
-    // [-2  ]    [ x_3        ]   [e^T]      [inf]
-    clow[i] = -2; cupp[i++] = 1e+20;
-  }
-  assert(i==m);
+  RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, 1),
+      RAJA_LAMBDA(RAJA::Index_type i)
+      {
+        if(haveIneq)
+        {
+          // [-2  ]    [ x_1 + e^T s]   [e^T]      [ 2 ]
+          clow[m-3] = -2; cupp[m-3] = 2.;
+          // [-inf] <= [ x_2        ] + [e^T] y <= [ 2 ]
+          clow[m-2] = -1e+20; cupp[m-2] = 2.;
+          // [-2  ]    [ x_3        ]   [e^T]      [inf]
+          clow[m-1] = -2; cupp[m-1] = 1e+20;
+        }
+      });
 
-  for(i=0; i<m; ++i) type[i]=hiopNonlinear;
+  RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, m),
+      RAJA_LAMBDA(RAJA::Index_type i)
+      {
+        type[i] = hiopNonlinear;
+      });
+
   return true;
 }
 
@@ -339,7 +345,7 @@ bool Ex4::eval_grad_f(const long long& n, const double* x, bool new_x, double* g
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, ns),
       RAJA_LAMBDA(RAJA::Index_type i)
       {
-      gradf[i] = x[i] - 0.5;
+        gradf[i] = x[i] - 0.5;
       });
 
   //Qd*y
@@ -457,6 +463,8 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
       //assert(num_cons==ns);
       double* data = JacD[0];
       auto& rm = umpire::ResourceManager::getInstance();
+      // printf("data is %sallocated by umpire\n", rm.hasAllocator((void*)data)?"":"not ");
+      // printf("Md is %sallocated by umpire\n", rm.hasAllocator((void*)Md->local_buffer())?"":"not ");
       // rm.copy(data, Md->local_buffer(), ns*nd*sizeof(double));
       memcpy(data, Md->local_buffer(), ns*nd*sizeof(double));
     }
@@ -529,7 +537,6 @@ bool Ex4::eval_Hess_Lagr(const long long& n, const long long& m,
 bool Ex4::get_starting_point(const long long& global_n, double* x0)
 {
   assert(global_n==2*ns+nd); 
-  // for(int i=0; i<global_n; i++) x0[i]=1.;
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, global_n),
       RAJA_LAMBDA(RAJA::Index_type i)
       {
@@ -586,9 +593,6 @@ void Ex4::set_solution_primal(const double* x_vec)
   auto& resmgr = umpire::ResourceManager::getInstance();
   umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
 
-  umpire::util::AllocationRecord record{x, sizeof(double) * n,
-    allocator.getAllocationStrategy()};
-  resmgr.registerAllocation(x, record);
   if(NULL == sol_x_) {
     sol_x_ = static_cast<double*>(allocator.allocate(n * sizeof(double)));
   }
@@ -608,24 +612,18 @@ void Ex4::set_solution_duals(const double* zl_vec, const double* zu_vec, const d
   auto& resmgr = umpire::ResourceManager::getInstance();
   umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
 
-  umpire::util::AllocationRecord zl_record{zl, sizeof(double) * n, allocator.getAllocationStrategy()};
-  resmgr.registerAllocation(zl, zl_record);
   if(NULL == sol_zl_)
   {
     sol_zl_ = static_cast<double*>(allocator.allocate(n * sizeof(double)));
   }
   resmgr.copy(sol_zl_, zl);
 
-  umpire::util::AllocationRecord zu_record{zu, sizeof(double) * n, allocator.getAllocationStrategy()};
-  resmgr.registerAllocation(zu, zu_record);
   if(NULL == sol_zu_)
   {
     sol_zu_ = static_cast<double*>(allocator.allocate(n * sizeof(double)));
   }
   resmgr.copy(sol_zu_, zu);
 
-  umpire::util::AllocationRecord lambda_record{lambda, sizeof(double) * m, allocator.getAllocationStrategy()};
-  resmgr.registerAllocation(lambda, lambda_record);
   if(NULL == sol_lambda_)
   {
     sol_lambda_ = static_cast<double*>(allocator.allocate(m * sizeof(double)));
@@ -761,6 +759,8 @@ bool Ex4OneCallCons::eval_Jac_cons(const long long& n, const long long& m,
     //just copy the dense Jacobian corresponding to equalities
     auto& rm = umpire::ResourceManager::getInstance();
     // rm.copy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
+    // printf("JacD is %sallocated by umpire\n", rm.hasAllocator((void*)JacD[0])?"":"not ");
+    // printf("Md is %sallocated by umpire\n", rm.hasAllocator((void*)Md->local_buffer())?"":"not ");
     memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
 
     if(haveIneq)
