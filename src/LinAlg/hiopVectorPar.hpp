@@ -154,6 +154,11 @@ public:
   virtual double* local_data() { return data_; }
   virtual const double* local_data_const() const { return data_; }
   virtual MPI_Comm get_mpi_comm() const { return comm_; }
+  virtual inline double* local_data_host() { return local_data(); }
+  virtual inline const double* local_data_host_const() const { return local_data_const(); }
+
+  virtual void copyToDev() {}
+  virtual void copyFromDev() {}
 
 protected:
   MPI_Comm comm_;
