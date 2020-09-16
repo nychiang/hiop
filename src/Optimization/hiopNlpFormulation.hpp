@@ -201,6 +201,12 @@ public:
 			   int num_cons, //size of 'cons'
 			   double* cons);
   
+  /* packs constraint rhs or constraint multipliers into hiopVector based on the internal mappings 
+   * 'cons_eq_mapping_'and 'cons_ineq_mapping_ */
+  void copy_EqIneq_to_cons(const hiopVector& yc,
+			   const hiopVector& yd,
+			   hiopVector& cons);
+  
   /* outputing and debug-related functionality*/
   hiopLogger* log;
   hiopRunStats runStats;
@@ -264,7 +270,7 @@ protected:
    * Internal buffer for constraints. Used only when constraints and Jacobian are evaluated at 
    * once (cons_eval_type_==1), otherwise NULL.
    */
-  double* cons_body_;
+  hiopVector* cons_body_;
   
   /** 
    * Internal buffer for the Jacobian. Used only when constraints and Jacobian are evaluated at 
@@ -276,7 +282,7 @@ protected:
    * Internal buffer for the multipliers of the constraints use to copy the multipliers of eq. and
    * ineq. into and to return it to the user via @user_callback_solution and @user_callback_iterate
    */
-  double* cons_lambdas_;
+  hiopVector* cons_lambdas_;
 private:
   hiopNlpFormulation(const hiopNlpFormulation& s) : interface_base(s.interface_base) {};
 };

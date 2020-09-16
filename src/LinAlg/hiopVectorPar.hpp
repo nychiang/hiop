@@ -159,6 +159,8 @@ public:
 
   virtual void copyToDev() {}
   virtual void copyFromDev() {}
+  virtual void copyToDev() const {}
+  virtual void copyFromDev() const {}
 
 protected:
   MPI_Comm comm_;

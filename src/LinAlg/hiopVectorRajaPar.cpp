@@ -1394,14 +1394,36 @@ void hiopVectorRajaPar::print(FILE* file, const char* msg/*=NULL*/, int max_elem
 
 void hiopVectorRajaPar::copyToDev()
 {
+  if(data_dev_ == data_host_)
+    return;
   auto& resmgr = umpire::ResourceManager::getInstance();
   resmgr.copy(data_dev_, data_host_);
 }
 
 void hiopVectorRajaPar::copyFromDev()
 {
+  if(data_dev_ == data_host_)
+    return;
   auto& resmgr = umpire::ResourceManager::getInstance();
   resmgr.copy(data_host_, data_dev_);
+}
+
+void hiopVectorRajaPar::copyToDev() const
+{
+  if(data_dev_ == data_host_)
+    return;
+  auto& resmgr = umpire::ResourceManager::getInstance();
+  double* data_dev = const_cast<double*>(data_dev_);
+  resmgr.copy(data_dev, data_host_);
+}
+
+void hiopVectorRajaPar::copyFromDev() const
+{
+  if(data_dev_ == data_host_)
+    return;
+  auto& resmgr = umpire::ResourceManager::getInstance();
+  double* data_host = const_cast<double*>(data_host_);
+  resmgr.copy(data_host, data_dev_);
 }
 
 

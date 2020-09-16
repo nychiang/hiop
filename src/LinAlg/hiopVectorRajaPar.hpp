@@ -153,6 +153,8 @@ public:
 
   void copyToDev();
   void copyFromDev();
+  void copyToDev() const;
+  void copyFromDev() const;
 
 private:
   std::string mem_space_;
