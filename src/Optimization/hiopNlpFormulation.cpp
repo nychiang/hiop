@@ -697,7 +697,7 @@ bool hiopNlpFormulation::eval_Jac_c_d(hiopVector& x, bool new_x, hiopMatrix& Jac
     assert(cons_body_);
     assert(cons_Jac_);
     
-    return eval_Jac_c_d_interface_impl(x.local_data(), new_x, Jac_c, Jac_d);
+    return eval_Jac_c_d_interface_impl(x, new_x, Jac_c, Jac_d);
   }
   return true;
 }
@@ -920,7 +920,7 @@ bool hiopNlpDenseConstraints::eval_Jac_d(hiopVector& x, bool new_x, double** Jac
   return bret;
 }
 
-bool hiopNlpDenseConstraints::eval_Jac_c_d_interface_impl(double* x, bool new_x,
+bool hiopNlpDenseConstraints::eval_Jac_c_d_interface_impl(hiopVector& x, bool new_x,
 							  hiopMatrix& Jac_c,
 							  hiopMatrix& Jac_d)
 {
@@ -936,7 +936,7 @@ bool hiopNlpDenseConstraints::eval_Jac_c_d_interface_impl(double* x, bool new_x,
     return false;
   }
 
-  double* x_user = nlp_transformations.applyTox(x, new_x);
+  double* x_user = nlp_transformations.applyTox(x.local_data(), new_x);
   double** Jac_consde = cons_Jac_de->local_data();
   double** Jac_user = nlp_transformations.applyToJacobCons(Jac_consde, n_cons);
 
@@ -1087,7 +1087,7 @@ bool hiopNlpMDS::eval_Jac_d(hiopVector& x, bool new_x, hiopMatrix& Jac_d)
     return false;
   }
 }
-bool hiopNlpMDS::eval_Jac_c_d_interface_impl(double* x,
+bool hiopNlpMDS::eval_Jac_c_d_interface_impl(hiopVector& x,
 					     bool new_x,
 					     hiopMatrix& Jac_c,
 					     hiopMatrix& Jac_d)
@@ -1104,7 +1104,7 @@ bool hiopNlpMDS::eval_Jac_c_d_interface_impl(double* x,
     assert(cons_Jac->n_sp() == pJac_d->n_sp());
     assert(cons_Jac->sp_nnz() == pJac_c->sp_nnz() + pJac_d->sp_nnz());
     
-    double* x_user      = nlp_transformations.applyTox(x, new_x);
+    double* x_user      = nlp_transformations.applyTox(x.local_data(), new_x);
     //! todo -> need hiopNlpTransformation::applyInvToJacobIneq to work with MDS Jacobian
     //double** Jac_d_user = nlp_transformations.applyToJacobIneq(Jac_d, n_cons_ineq);
     
@@ -1134,7 +1134,7 @@ bool hiopNlpMDS::eval_Jac_c_d_interface_impl(double* x,
   return true;
 }
 
-bool hiopNlpMDS::eval_Hess_Lagr(const double* x, bool new_x, const double& obj_factor,
+bool hiopNlpMDS::eval_Hess_Lagr(const hiopVector& x, bool new_x, const double& obj_factor,
 			      const double* lambda_eq, const double* lambda_ineq, bool new_lambdas,
 			      hiopMatrix& Hess_L)
 {
@@ -1157,7 +1157,7 @@ bool hiopNlpMDS::eval_Hess_Lagr(const double* x, bool new_x, const double& obj_f
     
     int nnzHSS = pHessL->sp_nnz(), nnzHSD = 0;
     
-    bret = interface.eval_Hess_Lagr(n_vars, n_cons, x, new_x, 
+    bret = interface.eval_Hess_Lagr(n_vars, n_cons, x.local_data_const(), new_x, 
 				    obj_factor, _buf_lambda->local_data(), new_lambdas, 
 				    pHessL->n_sp(), pHessL->n_de(),
 				    nnzHSS, pHessL->sp_irow(), pHessL->sp_jcol(), pHessL->sp_M(),
