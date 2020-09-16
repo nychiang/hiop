@@ -94,16 +94,16 @@ public:
    * Wrappers for the interface calls. 
    * Can be overridden for specialized formulations required by the algorithm.
    */
-  virtual bool eval_f(double* x, bool new_x, double& f);
-  virtual bool eval_grad_f(double* x, bool new_x, double* gradf);
+  virtual bool eval_f(hiopVector& x, bool new_x, double& f);
+  virtual bool eval_grad_f(hiopVector& x, bool new_x, double* gradf);
   
-  virtual bool eval_c(double* x, bool new_x, double* c);
-  virtual bool eval_d(double* x, bool new_x, double* d);
-  virtual bool eval_c_d(double* x, bool new_x, double* c, double* d);
+  virtual bool eval_c(hiopVector& x, bool new_x, double* c);
+  virtual bool eval_d(hiopVector& x, bool new_x, double* d);
+  virtual bool eval_c_d(hiopVector& x, bool new_x, double* c, double* d);
   /* the implementation of the next two methods depends both on the interface and on the formulation */
-  virtual bool eval_Jac_c(double* x, bool new_x, hiopMatrix& Jac_c)=0;
-  virtual bool eval_Jac_d(double* x, bool new_x, hiopMatrix& Jac_d)=0;
-  virtual bool eval_Jac_c_d(double* x, bool new_x, hiopMatrix& Jac_c, hiopMatrix& Jac_d);
+  virtual bool eval_Jac_c(hiopVector& x, bool new_x, hiopMatrix& Jac_c)=0;
+  virtual bool eval_Jac_d(hiopVector& x, bool new_x, hiopMatrix& Jac_d)=0;
+  virtual bool eval_Jac_c_d(hiopVector& x, bool new_x, hiopMatrix& Jac_c, hiopMatrix& Jac_d);
 protected:
   //calls specific hiopInterfaceXXX::eval_Jac_cons and deals with specializations of hiopMatrix arguments
   virtual bool eval_Jac_c_d_interface_impl(double* x, bool new_x, hiopMatrix& Jac_c, hiopMatrix& Jac_d) = 0;
@@ -300,11 +300,11 @@ public:
 
   virtual bool finalizeInitialization();
 
-  virtual bool eval_Jac_c(double* x, bool new_x, hiopMatrix& Jac_c);
-  virtual bool eval_Jac_d(double* x, bool new_x, hiopMatrix& Jac_d);
+  virtual bool eval_Jac_c(hiopVector& x, bool new_x, hiopMatrix& Jac_c);
+  virtual bool eval_Jac_d(hiopVector& x, bool new_x, hiopMatrix& Jac_d);
   /* specialized evals to avoid overhead of dynamic cast. Generic variants available above. */
-  virtual bool eval_Jac_c(double* x, bool new_x, double** Jac_c);
-  virtual bool eval_Jac_d(double* x, bool new_x, double** Jac_d);
+  virtual bool eval_Jac_c(hiopVector& x, bool new_x, double** Jac_c);
+  virtual bool eval_Jac_d(hiopVector& x, bool new_x, double** Jac_d);
 protected:
   //calls specific hiopInterfaceXXX::eval_Jac_cons and deals with specializations of
   //hiopMatrix arguments
@@ -361,8 +361,8 @@ public:
 
   virtual bool finalizeInitialization();
 
-  virtual bool eval_Jac_c(double* x, bool new_x, hiopMatrix& Jac_c);
-  virtual bool eval_Jac_d(double* x, bool new_x, hiopMatrix& Jac_d);
+  virtual bool eval_Jac_c(hiopVector& x, bool new_x, hiopMatrix& Jac_c);
+  virtual bool eval_Jac_d(hiopVector& x, bool new_x, hiopMatrix& Jac_d);
 
 
 protected:

@@ -384,8 +384,11 @@ evalNlp(hiopIterate& iter,
 	hiopMatrix& Hess_L)
 {
   bool new_x=true; 
-  hiopVector& it_x = *iter.get_x();
-  double* x = it_x.local_data();//local_data_const();
+  // hiopVector& it_x = *iter.get_x();
+  // double* x = it_x.local_data();//local_data_const();
+  // //f(x)
+  // if(!nlp->eval_f(x, new_x, f)) {
+  hiopVector& x = *iter.get_x();
   //f(x)
   if(!nlp->eval_f(x, new_x, f)) {
     nlp->log->printf(hovError, "Error occured in user objective evaluation\n");
@@ -418,7 +421,7 @@ evalNlp(hiopIterate& iter,
   const hiopVector* yd = iter.get_yd(); assert(yd);
   const int new_lambda = true;
   
-  if(!nlp->eval_Hess_Lagr(x, new_x, 
+  if(!nlp->eval_Hess_Lagr(x.local_data(), new_x, 
 			  1., yc->local_data_const(), yd->local_data_const(), new_lambda,
 			  Hess_L)) {
     nlp->log->printf(hovError, "Error occured in user Hessian function evaluation\n");
@@ -511,8 +514,10 @@ bool hiopAlgFilterIPMBase::evalNlp_funcOnly(hiopIterate& iter,
 					    double& f, hiopVector& c, hiopVector& d)
 {
   bool new_x=true; 
-  hiopVector& it_x = *iter.get_x();
-  double* x = it_x.local_data();
+  // hiopVector& it_x = *iter.get_x();
+  // double* x = it_x.local_data();
+  // if(!nlp->eval_f(x, new_x, f)) {
+  hiopVector& x = *iter.get_x();
   if(!nlp->eval_f(x, new_x, f)) {
     nlp->log->printf(hovError, "Error occured in user objective evaluation\n");
     return false;
@@ -532,8 +537,9 @@ bool hiopAlgFilterIPMBase::evalNlp_derivOnly(hiopIterate& iter,
 					     hiopMatrix& Hess_L)
 {
   bool new_x=false; //functions were previously evaluated in the line search
-  hiopVector& it_x = *iter.get_x();
-  double* x = it_x.local_data();
+  // hiopVector& it_x = *iter.get_x();
+  // double* x = it_x.local_data();
+  hiopVector& x = *iter.get_x();
   if(!nlp->eval_grad_f(x, new_x, gradf.local_data())) {
     nlp->log->printf(hovError, "Error occured in user gradient evaluation\n");
     return false;
@@ -546,7 +552,7 @@ bool hiopAlgFilterIPMBase::evalNlp_derivOnly(hiopIterate& iter,
   const hiopVector* yc = iter.get_yc(); assert(yc);
   const hiopVector* yd = iter.get_yd(); assert(yd);
   const int new_lambda = true;
-  if(!nlp->eval_Hess_Lagr(x, new_x, 
+  if(!nlp->eval_Hess_Lagr(x.local_data(), new_x, 
 			  1., yc->local_data_const(), yd->local_data_const(), new_lambda,
 			  Hess_L)) {
     nlp->log->printf(hovError, "Error occured in user Hessian function evaluation\n");
