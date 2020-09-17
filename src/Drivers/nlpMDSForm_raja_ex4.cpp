@@ -3,7 +3,7 @@
 #include <umpire/Allocator.hpp>
 #include <umpire/ResourceManager.hpp>
 #include <RAJA/RAJA.hpp>
-
+#include <hiopMatrixDenseRowMajor.hpp>
 
 #if 0 //#ifdef HIOP_USE_GPU
   #include "cuda.h"
@@ -32,11 +32,10 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
 {
   // Make sure mem_space_ is uppercase
   transform(mem_space_.begin(), mem_space_.end(), mem_space_.begin(), ::toupper);
-  if(mem_space_ == "DEFAULT" || mem_space_ == "default")
-    mem_space_ = "HOST";
 
   auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator allocator  = resmgr.getAllocator(mem_space_);
+  umpire::Allocator allocator 
+    = resmgr.getAllocator(mem_space_ == "DEFAULT" ? "HOST" : mem_space_);
 
   if(ns<0)
   {
@@ -59,23 +58,32 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
     nd = nd_;
 
   // For now this is creating hiopMatrixDenseRowMajor object
-  Q = hiop::LinearAlgebraFactory::createMatrixDense(nd,nd);
+  if(mem_space_ == "DEFAULT")
+    Q = new hiop::hiopMatrixDenseRowMajor(nd, nd);
+  else
+    Q = new hiop::hiopMatrixRajaDense(nd, nd, mem_space_);
   Q->setToConstant(1e-8);
   Q->addDiagonal(2.);
 
   double* data = Q->local_buffer();
-  RAJA::View<double, RAJA::Layout<2>> Mview(data, nd, nd);
+  RAJA::View<double, RAJA::Layout<2>> Qview(data, nd, nd);
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(1, nd-1),
     RAJA_LAMBDA(RAJA::Index_type i)
   {
-    Mview(i,   i+1) = 1.0;
-    Mview(i+1, i)   = 1.0;
+    Qview(i,   i+1) = 1.0;
+    Qview(i+1, i)   = 1.0;
   });
 
-  Md = hiop::LinearAlgebraFactory::createMatrixDense(ns,nd);
+  if(mem_space_ == "DEFAULT")
+    Md = new hiopMatrixDenseRowMajor(ns, nd);
+  else
+    Md = new hiop::hiopMatrixRajaDense(ns, nd, mem_space_);
   Md->setToConstant(-1.0);
 
-  _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
+  if(mem_space_ == "DEFAULT")
+    _buf_y = new double[nd];
+  else
+    _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
 
   haveIneq = true;
 }
@@ -481,10 +489,10 @@ bool Ex4::eval_Jac_cons(const long long& n, const long long& m,
       //assert(num_cons==ns);
       double* data = JacD[0];
       auto& rm = umpire::ResourceManager::getInstance();
-      // printf("data is %sallocated by umpire\n", rm.hasAllocator((void*)data)?"":"not ");
-      // printf("Md is %sallocated by umpire\n", rm.hasAllocator((void*)Md->local_buffer())?"":"not ");
-      // rm.copy(data, Md->local_buffer(), ns*nd*sizeof(double));
-      memcpy(data, Md->local_buffer(), ns*nd*sizeof(double));
+      if(mem_space_ == "DEFAULT")
+        memcpy(data, Md->local_buffer(), ns*nd*sizeof(double));
+      else
+        rm.copy(data, Md->local_buffer(), ns*nd*sizeof(double));
     }
 
     if(num_cons==3 && haveIneq && ns>0)
@@ -791,10 +799,10 @@ bool Ex4OneCallCons::eval_Jac_cons(const long long& n, const long long& m,
   {
     //just copy the dense Jacobian corresponding to equalities
     auto& rm = umpire::ResourceManager::getInstance();
-    // rm.copy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
-    // printf("JacD is %sallocated by umpire\n", rm.hasAllocator((void*)JacD[0])?"":"not ");
-    // printf("Md is %sallocated by umpire\n", rm.hasAllocator((void*)Md->local_buffer())?"":"not ");
-    memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
+    if(mem_space_ == "DEFAULT")
+      memcpy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
+    else
+      rm.copy(JacD[0], Md->local_buffer(), ns*nd*sizeof(double));
 
     if(haveIneq)
     {
