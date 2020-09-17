@@ -183,9 +183,9 @@ public:
   inline void   user_x(hiopVector& hiop_x, double* user_x) 
   { 
     //double *hiop_xa = hiop_x.local_data();
-    double *user_xa = nlp_transformations.applyTox(hiop_x,/*new_x=*/true); 
+    hiopVector *x = nlp_transformations.applyTox(hiop_x,/*new_x=*/true); 
     //memcpy(user_x, user_xa, hiop_x.get_local_size()*sizeof(double));
-    memcpy(user_x, user_xa, nlp_transformations.n_post_local()*sizeof(double));
+    memcpy(user_x, x->local_data(), nlp_transformations.n_post_local()*sizeof(double));
   }
 
   /* copies/unpacks duals of the bounds and of constraints from 'it' to the three arrays */
