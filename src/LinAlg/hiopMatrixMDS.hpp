@@ -12,9 +12,16 @@
 
 namespace hiop
 {
-
 /** Mixed Sparse-Dense blocks matrix  - it is not distributed
  *  M = [S D] where S is sparse and D is dense
+ *  Note: the following methods of hiopMatrix are NOT 
+ *  implemented in this class:
+ *  - timesMat
+ *  - transTimesMat
+ *  - timesMatTran
+ *  - addDiagonal (both overloads)
+ *  - addSubDiagonal (all three overloads)
+ *  - addUpperTriangleToSymDenseMatrixUpperTriangle
  */
 class hiopMatrixMDS : public hiopMatrix
 {
@@ -223,6 +230,17 @@ private:
   hiopMatrixMDS(const hiopMatrixMDS&) {};
 };
 
+/*
+ * Note: the following methods of hiopMatrix are NOT 
+ * implemented in this class:
+ * - timesMat
+ * - transTimesMat
+ * - timesMatTran
+ * - addDiagonal (both overloads)
+ * - addSubDiagonal (all three overloads)
+ * - addToSymDenseMatrixUpperTriangle
+ * - transAddToSymDenseMatrixUpperTriangle
+ */
 class hiopMatrixSymBlockDiagMDS : public hiopMatrix
 {
 public:
