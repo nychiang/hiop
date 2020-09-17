@@ -81,7 +81,7 @@ public:
   virtual long long n_pre ()=0;
 
   /* transforms variable vector */
-  virtual inline double* applyTox(double* x, const bool& new_x) { return x; };
+  virtual inline double* applyTox(hiopVector& x, const bool& new_x) { return x.local_data(); };
   virtual inline double* applyInvTox(double* x) { return x; }
   virtual inline void applyInvTox(double* x_in, hiopVector& x_out) 
   { 
@@ -152,20 +152,20 @@ public:
   virtual inline long long n_post_local() { return fs_n_local(); }
 
   /* from reduced space to full space */
-  inline double* applyTox(double* x, const bool& new_x) 
+  inline double* applyTox(hiopVector& x, const bool& new_x) 
   { 
-    x_rs_ref = x;
+    x_rs_ref_ = &x;
     if(!new_x) { return x_fs->local_data(); }
-    applyToArray(x, x_fs->local_data());
+    applyToArray(x.local_data(), x_fs->local_data());
     return x_fs->local_data();
   };
 
   /* from full space to reduced space (fixed vars removed) */
   inline double* applyInvTox(double* x_fs_in) 
   { 
-    assert(x_rs_ref!=NULL); assert(x_fs_in==x_fs->local_data());
-    applyInvToArray(x_fs_in, x_rs_ref);
-    return x_rs_ref; 
+    assert(x_rs_ref_!=NULL); assert(x_fs_in==x_fs->local_data());
+    applyInvToArray(x_fs_in, x_rs_ref_->local_data());
+    return x_rs_ref_->local_data(); 
   }
   
   /* from fs to rs */
@@ -263,7 +263,7 @@ protected:
   std::vector<int> fs2rs_idx_map;
 
   //references to reduced-space buffers - returned in applyInvXXX
-  double* x_rs_ref;
+  hiopVector* x_rs_ref_;
   double* grad_rs_ref;
   double **Jacc_rs_ref, **Jacd_rs_ref;
 #ifdef HIOP_USE_MPI
@@ -367,11 +367,11 @@ public:
     }
   }
 
-  double* applyTox(double* x, const bool& new_x) 
+  double* applyTox(hiopVector& x, const bool& new_x) 
   {
-    double* ret = x;
+    double* ret = x.local_data();
     for(std::list<hiopNlpTransformation*>::iterator it=list_trans_.begin(); it!=list_trans_.end(); ++it)
-      ret = (*it)->applyTox(ret,new_x);
+      ret = (*it)->applyTox(x ,new_x);
     return ret;
   }
 

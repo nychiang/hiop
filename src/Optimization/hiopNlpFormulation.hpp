@@ -182,8 +182,8 @@ public:
   inline double user_obj(double hiop_f) { return nlp_transformations.applyToObj(hiop_f); }
   inline void   user_x(hiopVector& hiop_x, double* user_x) 
   { 
-    double *hiop_xa = hiop_x.local_data();
-    double *user_xa = nlp_transformations.applyTox(hiop_xa,/*new_x=*/true); 
+    //double *hiop_xa = hiop_x.local_data();
+    double *user_xa = nlp_transformations.applyTox(hiop_x,/*new_x=*/true); 
     //memcpy(user_x, user_xa, hiop_x.get_local_size()*sizeof(double));
     memcpy(user_x, user_xa, nlp_transformations.n_post_local()*sizeof(double));
   }

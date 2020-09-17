@@ -499,7 +499,7 @@ hiopVector* hiopNlpFormulation::alloc_dual_vec() const
 
 bool hiopNlpFormulation::eval_f(hiopVector& x, bool new_x, double& f)
 {
-  double* xx = nlp_transformations.applyTox(x.local_data(), new_x);
+  double* xx = nlp_transformations.applyTox(x, new_x);
 
   runStats.tmEvalObj.start();
   bool bret = interface_base.eval_f(nlp_transformations.n_post(),xx,new_x,f);
@@ -510,7 +510,7 @@ bool hiopNlpFormulation::eval_f(hiopVector& x, bool new_x, double& f)
 }
 bool hiopNlpFormulation::eval_grad_f(hiopVector& x, bool new_x, double* gradf)
 {
-  double* xx     = nlp_transformations.applyTox(x.local_data(), new_x);
+  double* xx     = nlp_transformations.applyTox(x, new_x);
   double* gradff = nlp_transformations.applyToGradObj(gradf);
   bool bret; 
   runStats.tmEvalGrad_f.start();
@@ -531,7 +531,7 @@ bool hiopNlpFormulation::get_starting_point(hiopVector& x0_for_hiop,
 
   hiopVector* lambdas = hiop::LinearAlgebraFactory::createVector(yc0_for_hiop.get_size() + yd0_for_hiop.get_size());
   
-  double* x0_for_user = nlp_transformations.applyTox(x0_for_hiop.local_data(),true);
+  double* x0_for_user = nlp_transformations.applyTox(x0_for_hiop, true);
   double* zL0_for_user = zL0_for_hiop.local_data();
   double* zU0_for_user = zU0_for_hiop.local_data();
   double* lambda_for_user = lambdas->local_data();
@@ -572,7 +572,7 @@ bool hiopNlpFormulation::get_starting_point(hiopVector& x0_for_hiop,
 
 bool hiopNlpFormulation::eval_c(hiopVector& x, bool new_x, double* c)
 {
-  double* xx = nlp_transformations.applyTox(x.local_data(), new_x);
+  double* xx = nlp_transformations.applyTox(x, new_x);
   double* cc = c;//nlp_transformations.applyToCons(c, n_cons_eq); //not needed for now
 
   runStats.tmEvalCons.start();
@@ -588,7 +588,7 @@ bool hiopNlpFormulation::eval_c(hiopVector& x, bool new_x, double* c)
 }
 bool hiopNlpFormulation::eval_d(hiopVector& x, bool new_x, double* d)
 {
-  double* xx = nlp_transformations.applyTox(x.local_data(), new_x);
+  double* xx = nlp_transformations.applyTox(x, new_x);
   double* dd = d;//nlp_transformations.applyToCons(d, n_cons_ineq); //not needed for now
 
   runStats.tmEvalCons.start();
@@ -636,7 +636,7 @@ bool hiopNlpFormulation::eval_c_d(hiopVector& x, bool new_x, double* c, double* 
     assert(1 == cons_eval_type_);
     assert(cons_body_ != nullptr);
 
-    double* xx = nlp_transformations.applyTox(x.local_data(), new_x);
+    double* xx = nlp_transformations.applyTox(x, new_x);
     // double* body = cons_body_;//nlp_transformations.applyToCons(d, n_cons_ineq); //not needed for now
 
     runStats.tmEvalCons.start();
@@ -895,7 +895,7 @@ bool hiopNlpDenseConstraints::finalizeInitialization()
 
 bool hiopNlpDenseConstraints::eval_Jac_c(hiopVector& x, bool new_x, double** Jac_c)
 {
-  double*  x_user      = nlp_transformations.applyTox(x.local_data(), new_x);
+  double*  x_user      = nlp_transformations.applyTox(x, new_x);
   double** Jac_c_user = nlp_transformations.applyToJacobEq(Jac_c, n_cons_eq);
 
   runStats.tmEvalJac_con.start();
@@ -908,7 +908,7 @@ bool hiopNlpDenseConstraints::eval_Jac_c(hiopVector& x, bool new_x, double** Jac
 }
 bool hiopNlpDenseConstraints::eval_Jac_d(hiopVector& x, bool new_x, double** Jac_d)
 {
-  double* x_user      = nlp_transformations.applyTox(x.local_data(), new_x);
+  double* x_user      = nlp_transformations.applyTox(x, new_x);
   double** Jac_d_user = nlp_transformations.applyToJacobIneq(Jac_d, n_cons_ineq);
  
   runStats.tmEvalJac_con.start();
@@ -936,7 +936,7 @@ bool hiopNlpDenseConstraints::eval_Jac_c_d_interface_impl(hiopVector& x, bool ne
     return false;
   }
 
-  double* x_user = nlp_transformations.applyTox(x.local_data(), new_x);
+  double* x_user = nlp_transformations.applyTox(x, new_x);
   double** Jac_consde = cons_Jac_de->local_data();
   double** Jac_user = nlp_transformations.applyToJacobCons(Jac_consde, n_cons);
 
@@ -1036,7 +1036,7 @@ bool hiopNlpMDS::eval_Jac_c(hiopVector& x, bool new_x, hiopMatrix& Jac_c)
   hiopMatrixMDS* pJac_c = dynamic_cast<hiopMatrixMDS*>(&Jac_c);
   assert(pJac_c);
   if(pJac_c) {
-    double* x_user = nlp_transformations.applyTox(x.local_data(), new_x);
+    double* x_user = nlp_transformations.applyTox(x, new_x);
     //! todo -> need hiopNlpTransformation::applyToJacobXXX to work with MDS Jacobian
     //double** Jac_c_user = nlp_transformations.applyToJacobEq(Jac_c, n_cons_eq); //!
     
@@ -1064,7 +1064,7 @@ bool hiopNlpMDS::eval_Jac_d(hiopVector& x, bool new_x, hiopMatrix& Jac_d)
   hiopMatrixMDS* pJac_d = dynamic_cast<hiopMatrixMDS*>(&Jac_d);
   assert(pJac_d);
   if(pJac_d) {
-    double* x_user      = nlp_transformations.applyTox(x.local_data(), new_x);
+    double* x_user      = nlp_transformations.applyTox(x, new_x);
     //! todo -> need hiopNlpTransformation::applyToJacobXXX to work with MDS Jacobian
     //double** Jac_d_user = nlp_transformations.applyToJacobIneq(Jac_d, n_cons_ineq);
     
@@ -1104,7 +1104,7 @@ bool hiopNlpMDS::eval_Jac_c_d_interface_impl(hiopVector& x,
     assert(cons_Jac->n_sp() == pJac_d->n_sp());
     assert(cons_Jac->sp_nnz() == pJac_c->sp_nnz() + pJac_d->sp_nnz());
     
-    double* x_user      = nlp_transformations.applyTox(x.local_data(), new_x);
+    double* x_user      = nlp_transformations.applyTox(x, new_x);
     //! todo -> need hiopNlpTransformation::applyInvToJacobIneq to work with MDS Jacobian
     //double** Jac_d_user = nlp_transformations.applyToJacobIneq(Jac_d, n_cons_ineq);
     
