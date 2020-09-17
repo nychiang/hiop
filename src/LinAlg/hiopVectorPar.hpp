@@ -56,7 +56,11 @@
 
 namespace hiop
 {
-
+/* hiopVectorPar
+ * Note: the following method(s) of hiopVector are NOT 
+ * implemented in this class:
+ * - min
+ */
 class hiopVectorPar : public hiopVector
 {
 public:

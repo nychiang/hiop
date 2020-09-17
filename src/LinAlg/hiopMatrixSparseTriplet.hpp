@@ -7,12 +7,19 @@
 
 #include <cassert>
 
+
 namespace hiop
 {
 
 /** 
  * @brief Sparse matrix of doubles in triplet format - it is not distributed
  * @note for now (i,j) are expected ordered: first on rows 'i' and then on cols 'j'
+ *
+ * Note: the following methods of hiopMatrix are NOT 
+ * implemented in this class:
+ * - addSubDiagonal
+ * - addUpperTriangleToSymDenseMatrixUpperTriangle
+ * - startingAtAddSubDiagonalToStartingAt
  */
 class hiopMatrixSparseTriplet : public hiopMatrixSparse
 {
