@@ -303,37 +303,55 @@ bool Ex4::eval_cons(const long long& n, const long long& m,
 
   assert(num_cons==ns || num_cons==3*haveIneq);
 
-  RAJA::ReduceSum<HIOP_RAJA_REDUCE, int> isEq(0);
-  RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, num_cons),
+  // equality constraints
+  if(num_cons == ns && ns > 0)
+  {
+    RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, num_cons),
       RAJA_LAMBDA(RAJA::Index_type irow)
       {
-      const int con_idx = (int) idx_cons[irow];
-      if(con_idx<ns) {
-      //equalities: x+s - Md y = 0
-      cons[con_idx] = x[con_idx] + s[con_idx];
-      isEq += 1;
-      } else if(haveIneq) {
-      assert(con_idx<ns+3);
-      //inequality
-      const int conineq_idx=con_idx-ns;
-      if(conineq_idx==0) {
-      cons[conineq_idx] = x[0];
-      for(int i=0; i<ns; i++) cons[conineq_idx] += s[i];
-      for(int i=0; i<nd; i++) cons[conineq_idx] += y[i];
-
-      } else if(conineq_idx==1) {
-      cons[conineq_idx] = x[1];
-      for(int i=0; i<nd; i++) cons[conineq_idx] += y[i];
-      } else if(conineq_idx==2) {
-        cons[conineq_idx] = x[2];
-        for(int i=0; i<nd; i++) cons[conineq_idx] += y[i];
-      } else { assert(false); }
-      }  
+        const int con_idx = (int) idx_cons[irow];
+        if(con_idx<ns)
+        {
+          //equalities: x+s - Md y = 0
+          cons[con_idx] = x[con_idx] + s[con_idx];
+        }
       });
-
-  if(isEq.get()) {
     Md->timesVec(1.0, cons, 1.0, y);
   }
+
+  /// @todo This is parallelizing only 3 iterations
+  // inequality constraints
+  if(num_cons == 3 && haveIneq)
+  {
+    RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, num_cons),
+      RAJA_LAMBDA(RAJA::Index_type irow)
+      {
+        const int con_idx = (int) idx_cons[irow];
+        assert(con_idx<ns+3);
+        const int conineq_idx=con_idx-ns;
+        if(conineq_idx==0)
+        {
+          cons[conineq_idx] = x[0];
+          for(int i=0; i<ns; i++) cons[conineq_idx] += s[i];
+          for(int i=0; i<nd; i++) cons[conineq_idx] += y[i];
+        }
+        else if(conineq_idx==1)
+        {
+          cons[conineq_idx] = x[1];
+          for(int i=0; i<nd; i++) cons[conineq_idx] += y[i];
+        }
+        else if(conineq_idx==2)
+        {
+          cons[conineq_idx] = x[2];
+          for(int i=0; i<nd; i++) cons[conineq_idx] += y[i];
+        }
+        else
+        {
+          assert(false);
+        }
+      });
+  }
+
   return true;
 }
 
@@ -636,37 +654,52 @@ bool Ex4OneCallCons::eval_cons(const long long& n, const long long& m,
     const double* x, bool new_x, double* cons)
 {
   assert(3*haveIneq+ns == m);
-  const double* s = x+ns;
+  assert(2*ns + nd     == n);
+  // const double* s = x+ns;
+  // double* y = const_cast<double*>(x)+2*ns;
   const double* y = x+2*ns;
 
   /// @todo determine whether this outter loop should be raja lambda, or
   /// if the inner loops should each be kernels, or if a more complex
   /// kernel execution policy should be used.
   RAJA::forall<HIOP_RAJA_EXEC>(RAJA::RangeSegment(0, m),
-      RAJA_LAMBDA(RAJA::Index_type con_idx)
+    RAJA_LAMBDA(RAJA::Index_type con_idx)
+    {
+      if(con_idx<ns)
       {
-      if(con_idx<ns) {
-      //equalities
-      cons[con_idx] = x[con_idx]+s[con_idx];
-      } else if(haveIneq) {
-      //inequalties
-      assert(con_idx<ns+3);
-      if(con_idx==ns) {
-      cons[con_idx] = x[0];
-      for(int i=0; i<ns; i++) cons[con_idx] += s[i];
-      for(int i=0; i<nd; i++) cons[con_idx] += y[i];
-
-      } else if(con_idx==ns+1) {
-      cons[con_idx] = x[1];
-      for(int i=0; i<nd; i++) cons[con_idx] += y[i];
-      } else if(con_idx==ns+2) {
-      cons[con_idx] = x[2];
-      for(int i=0; i<nd; i++) cons[con_idx] += y[i];
-      } else { assert(false); }
+        //equalities
+        cons[con_idx] = x[con_idx]+x[con_idx + ns];
       }
-      });
-
-  // apply Md to y and add the result to equality part of 'cons'
+      else if(haveIneq)
+      {
+        //inequalties
+        assert(con_idx<ns+3);
+        if(con_idx==ns)
+        {
+          cons[con_idx] = x[0];
+          for(int i=0; i<ns; i++)
+            cons[con_idx] += x[i + ns];   // s
+          for(int i=0; i<nd; i++)
+            cons[con_idx] += x[i + 2*ns]; // y
+        }
+        else if(con_idx==ns+1)
+        {
+          cons[con_idx] = x[1];
+          for(int i=0; i<nd; i++)
+            cons[con_idx] += x[i + 2*ns]; // y
+        }
+        else if(con_idx==ns+2)
+        {
+          cons[con_idx] = x[2];
+          for(int i=0; i<nd; i++)
+            cons[con_idx] += x[i + 2*ns]; // y
+        }
+        else
+        {
+          assert(false);
+        }
+      }
+    });
 
   //we know that equalities are the first ns constraints so this should work
   Md->timesVec(1.0, cons, 1.0, y);
