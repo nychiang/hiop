@@ -819,10 +819,20 @@ public:
     // Make sure pattern eliminates the correct element
     setLocalElement(&x, N - 1, 1000*three);
 
-    const real_type expected = (N-1) * std::log(x_val);
-    const real_type result = x.logBarrier(pattern);
+    real_type expected = (N-1) * std::log(x_val);
+    real_type result = x.logBarrier(pattern);
 
-    const bool fail = !isEqual(result, expected);
+    int fail = !isEqual(result, expected);
+
+    // Make sure pattern eliminates the correct elements
+    pattern.setToConstant(zero);
+    setLocalElement(&pattern, N - 1, one);
+    x.setToConstant(zero);
+    setLocalElement(&x, N - 1, x_val);
+
+    expected = std::log(x_val);
+    result = x.logBarrier(pattern);
+    fail += !isEqual(result, expected);
 
     printMessage(fail, __func__, rank);
     return reduceReturn(fail, &x);

@@ -647,7 +647,7 @@ void hiopVectorRajaPar::componentDiv (const hiopVector& vec)
  * with pattern selection. 
  * 
  * @pre `this`, `select` and `vec` have same partitioning.
- * @pre vec[i] != 0 forall i
+ * @pre vec[i] != 0 when select[i] = 1
  * @post `vec` and `select` are not modified
  * 
  */
@@ -766,7 +766,7 @@ void hiopVectorRajaPar::axdzpy(double alpha, const hiopVector& xvec, const hiopV
  * @brief this[i] += alpha*x[i]/z[i] forall i with pattern selection
  * 
  * @pre `this`, `xvec`, `zvec` and `select` have same partitioning.
- * @pre zvec[i] != 0 forall i
+ * @pre zvec[i] != 0 when select[i] = 1
  * @post `xvec`, `zvec` and `select` are not modified
  */
 void hiopVectorRajaPar::axdzpy_w_pattern( 
@@ -876,6 +876,7 @@ void hiopVectorRajaPar::invert()
  * @brief Sum all selected log(this[i])
  * 
  * @pre `this` and `select` have same partitioning.
+ * @pre Selected elements of `this` are > 0.
  * @post `this` and `select` are not modified
  * 
  * @warning This is local method only!
@@ -894,7 +895,8 @@ double hiopVectorRajaPar::logBarrier(const hiopVector& select) const
 #ifdef HIOP_DEEPCHECKS
       assert(id[i] == one || id[i] == zero);
 #endif
-      sum += id[i] * std::log(data[i]);
+      if(id[i] == one)
+        sum += std::log(data[i]);
 		});
 
   return sum.get();
