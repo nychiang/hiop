@@ -5,10 +5,10 @@
 #include <RAJA/RAJA.hpp>
 #include <hiopMatrixDenseRowMajor.hpp>
 
-#if 0 //#ifdef HIOP_USE_GPU
+#if 0 //def HIOP_USE_GPU
   #include "cuda.h"
   #define RAJA_CUDA_BLOCK_SIZE 128
-  using HIOP_RAJA_EXEC   = RAJA::cuda_exec<RAJA_CUDA_BLOCK_SIZE>;
+  using HIOP_RAJA_EXEC   = RAJA::cuda_exec<128>;
   using HIOP_RAJA_REDUCE = RAJA::cuda_reduce;
   using HIOP_RAJA_ATOMIC = RAJA::cuda_atomic;
   #define RAJA_LAMBDA [=] __device__
@@ -57,11 +57,50 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
   else
     nd = nd_;
 
-  // For now this is creating hiopMatrixDenseRowMajor object
+  // Allocate data buffer and matrices Q and Md
   if(mem_space_ == "DEFAULT")
-    Q = new hiop::hiopMatrixDenseRowMajor(nd, nd);
+  {
+    Q  = new hiop::hiopMatrixDenseRowMajor(nd, nd);
+    Md = new hiop::hiopMatrixDenseRowMajor(ns, nd);
+    _buf_y = new double[nd];
+  }
   else
-    Q = new hiop::hiopMatrixRajaDense(nd, nd, mem_space_);
+  {
+    Q  = new hiop::hiopMatrixRajaDense(nd, nd, mem_space_);
+    Md = new hiop::hiopMatrixRajaDense(ns, nd, mem_space_);
+    _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
+  }
+
+  haveIneq = true;
+
+  initialize();
+}
+
+Ex4::~Ex4()
+{
+  auto& resmgr = umpire::ResourceManager::getInstance();
+  umpire::Allocator allocator;
+  if(mem_space_ == "DEFAULT")
+    allocator = resmgr.getAllocator("HOST");
+  else
+    allocator = resmgr.getAllocator(mem_space_);
+
+  allocator.deallocate(sol_lambda_);
+  allocator.deallocate(sol_zu_);
+  allocator.deallocate(sol_zl_);
+  allocator.deallocate(sol_x_);
+
+  if(mem_space_ == "DEFAULT")
+    delete [] _buf_y;
+  else
+    allocator.deallocate(_buf_y);
+
+  delete Md;
+  delete Q;
+}
+
+void Ex4::initialize()
+{
   Q->setToConstant(1e-8);
   Q->addDiagonal(2.);
 
@@ -74,31 +113,7 @@ Ex4::Ex4(int ns_, int nd_, std::string mem_space)
     Qview(i+1, i)   = 1.0;
   });
 
-  if(mem_space_ == "DEFAULT")
-    Md = new hiopMatrixDenseRowMajor(ns, nd);
-  else
-    Md = new hiop::hiopMatrixRajaDense(ns, nd, mem_space_);
   Md->setToConstant(-1.0);
-
-  if(mem_space_ == "DEFAULT")
-    _buf_y = new double[nd];
-  else
-    _buf_y = static_cast<double*>(allocator.allocate(nd * sizeof(double)));
-
-  haveIneq = true;
-}
-
-Ex4::~Ex4()
-{
-  auto& resmgr = umpire::ResourceManager::getInstance();
-  umpire::Allocator allocator = resmgr.getAllocator(mem_space_);
-  allocator.deallocate(_buf_y);
-  allocator.deallocate(sol_lambda_);
-  allocator.deallocate(sol_zu_);
-  allocator.deallocate(sol_zl_);
-  allocator.deallocate(sol_x_);
-  delete Md;
-  delete Q;
 }
 
 bool Ex4::get_prob_sizes(long long& n, long long& m)

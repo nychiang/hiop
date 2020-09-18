@@ -134,6 +134,8 @@ public:
   void set_solution_primal(const double* x_vec);
 
   void set_solution_duals(const double* zl_vec, const double* zu_vec, const double* lambda_vec);
+
+  void initialize();
   
 protected:
   int ns, nd;
