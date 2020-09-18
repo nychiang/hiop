@@ -45,87 +45,32 @@
 // herein do not necessarily state or reflect those of the United States Government or 
 // Lawrence Livermore National Security, LLC, and shall not be used for advertising or 
 // product endorsement purposes.
+
 #pragma once
 
-#include <string>
-#include <hiopMPI.hpp>
-#include <hiopVector.hpp>
-#include <hiopMatrixDense.hpp>
-#include <hiopMatrixSparse.hpp>
-#include <hiopVectorInt.hpp>
-
-namespace hiop {
-
 /**
- * @brief Factory for HiOp's linear algebra objects
- * 
+ * @file hiopVectorIntSeq.hpp
+ *
+ * @author Asher Mancinelli <asher.mancinelli@pnnl.gov>, PNNL
+ *
  */
-class LinearAlgebraFactory
+
+#include "hiopVectorInt.hpp"
+
+namespace hiop
 {
-public:
-  LinearAlgebraFactory() = delete; //default;
-  ~LinearAlgebraFactory() = delete; //default;
 
-  /**
-   * @brief Static method to create vector
-   */
-  static hiopVector* createVector(
-    const long long& glob_n,
-    long long* col_part = NULL,
-    MPI_Comm comm = MPI_COMM_SELF); 
-
-  /**
-   * @brief Static method to create local int vector.
-   */
-  static hiopVectorInt* createVectorInt(int sz);
-
-  /**
-   * @brief Static method to create a dense matrix.
-   * 
-   */
-  static hiopMatrixDense* createMatrixDense(
-    const long long& m,
-    const long long& glob_n,
-    long long* col_part = NULL,
-    MPI_Comm comm = MPI_COMM_SELF,
-    const long long& m_max_alloc = -1);
-
-  /**
-   * @brief Static method to create a sparse matrix
-   */
-  static hiopMatrixSparse* createMatrixSparse(
-    int rows,
-    int cols,
-    int nnz);
-
-  /**
-   * @brief Static method to create a symmetric sparse matrix
-   */
-  static hiopMatrixSparse* createMatrixSymSparse(
-    int size,
-    int nnz);
-
-  /**
-   * @brief Static method to create a raw C array
-   */
-  static double* createRawArray(int n);
-
-  /**
-   * @brief Static method to delete a raw C array
-   */
-  static void deleteRawArray(double* a);
-
-  /// Method to set memory space ID
-  static void set_mem_space(const std::string mem_space);
-
-  /// Return memory space ID
-  inline static std::string get_mem_space()
-  {
-    return mem_space_;
-  }
-
+class hiopVectorIntSeq : public hiopVectorInt
+{
 private:
-  static std::string mem_space_;
+  int *buf_;
+
+public:
+  hiopVectorIntSeq(int sz);
+
+  const int& operator[] (int i) const override;
+
+  int& operator[] (int i) override;
 };
 
 } // namespace hiop
