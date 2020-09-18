@@ -69,6 +69,9 @@ namespace hiop
  *
  * Implementations of this abstract class have the purpose of serving as wrappers
  * of existing CPU and GPU libraries for linear systems. 
+ * 
+ * Note:
+ *  - solve(matrix) is not implemented
  */
 
 class hiopLinSolver
@@ -111,4 +114,3 @@ protected:
 } //end namespace
 
 #endif
-
