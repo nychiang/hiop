@@ -156,7 +156,7 @@ public:
   { 
     x_rs_ref_ = &x;
     if(!new_x) { return x_fs; }
-    applyToArray(x.local_data(), x_fs->local_data());
+    applyToArray(x.local_data_const(), x_fs->local_data());
     return x_fs;
   };
 
@@ -371,8 +371,14 @@ public:
   {
     hiopVector* ret = &x;
     for(std::list<hiopNlpTransformation*>::iterator it=list_trans_.begin(); it!=list_trans_.end(); ++it)
-      ret = (*it)->applyTox(x ,new_x);
+      ret = (*it)->applyTox(*ret ,new_x);
     return ret;
+  }
+
+  virtual hiopVector* applyInvTox(hiopVector& x)
+  { 
+    assert(false && "This overload of applyInvTox is not implemented in hiopNlpTransformations class\n");
+    return nullptr;
   }
 
   void applyInvTox(hiopVector& x_in, hiopVector& x_out) 
