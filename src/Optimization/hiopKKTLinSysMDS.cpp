@@ -466,19 +466,19 @@ namespace hiop
       hiopLinSolverIndefDenseMagmaBuKa* p = dynamic_cast<hiopLinSolverIndefDenseMagmaBuKa*>(linSys_);
       if(p==NULL) {
 	//we have a nopiv linear solver or linear solver has not been created yet
-	delete linSys_;
-	linSys_ = NULL;
+        delete linSys_;
+        linSys_ = NULL;
       } else {
-	return p;
+        return p;
       }
     } else {
       hiopLinSolverIndefDenseMagmaNopiv* p = dynamic_cast<hiopLinSolverIndefDenseMagmaNopiv*>(linSys_);
       if(p==NULL) {
-	//we have a BuKa linear solver or linear solver has not been created yet
-	delete linSys_;
-	linSys_ = NULL;
+        //we have a BuKa linear solver or linear solver has not been created yet
+        delete linSys_;
+        linSys_ = NULL;
       } else {
-	return p;
+        return p;
       }
     }
 #endif
@@ -488,42 +488,41 @@ namespace hiop
 
       if(nlp_->options->GetString("compute_mode")=="hybrid") {
 #ifdef HIOP_USE_MAGMA
+        // once we get the desired functionality from magma this should be revisited to 
+        // increase robustness of nopiv factorization aftermath by making use of nopiv inertia
+        //
+        // Strategy
+        //  i. nopiv Magma (//! todo: + inertia correction) 
+        // when i. fails (in factorization, solve, or outer optimization loop--ascent direction--) employ
+        // ii. Magma BunchKaufman + inertia correction
+        //
+        // //! todo Performance of ii. can be improved if 
+        //------------
+        // - Magma would have a GPU routine for computing inertia
+        // - triangular solves would be done on CPU
 
-	// once we get the desired functionality from magma this should be revisited to 
-	// increase robustness of nopiv factorization aftermath by making use of nopiv inertia
-	//
-	// Strategy
-	//  i. nopiv Magma (//! todo: + inertia correction) 
-	// when i. fails (in factorization, solve, or outer optimization loop--ascent direction--) employ
-	// ii. Magma BunchKaufman + inertia correction
-	//
-	// //! todo Performance of ii. can be improved if 
-	//------------
-	// - Magma would have a GPU routine for computing inertia
-	// - triangular solves would be done on CPU
-
-	if(safe_mode_) {
-	  nlp_->log->printf(hovWarning, 
-			    "KKT_MDS_XYcYd linsys: MagmaBuKa size %d (%d cons) (safe_mode=%d)\n", 
-			    n, neq+nineq, safe_mode_);
-	  
-	  linSys_ = new hiopLinSolverIndefDenseMagmaBuKa(n, nlp_);
-	} else {
-	  nlp_->log->printf(hovWarning, 
-			    "KKT_MDS_XYcYd linsys: MagmaNopiv size %d (%d cons) (safe_mode=%d)\n", 
-			    n, neq+nineq, safe_mode_);
-	  
-	  hiopLinSolverIndefDenseMagmaNopiv* p = new hiopLinSolverIndefDenseMagmaNopiv(n, nlp_);
-	  linSys_ = p;
-	  p->set_fake_inertia(neq + nineq);
-	}
+        // if(safe_mode_) {
+          nlp_->log->printf(hovWarning, 
+                "KKT_MDS_XYcYd linsys: MagmaBuKa size %d (%d cons) (safe_mode=%d)\n", 
+                n, neq+nineq, safe_mode_);
+          
+          linSys_ = new hiopLinSolverIndefDenseMagmaBuKa(n, nlp_);
+        // } else {
+        //   nlp_->log->printf(hovWarning, 
+        //         "KKT_MDS_XYcYd linsys: MagmaNopiv size %d (%d cons) (safe_mode=%d)\n", 
+        //         n, neq+nineq, safe_mode_);
+          
+        //   hiopLinSolverIndefDenseMagmaNopiv* p = new hiopLinSolverIndefDenseMagmaNopiv(n, nlp_);
+        //   linSys_ = p;
+        //   p->set_fake_inertia(neq + nineq);
+        // }
 #else
-	nlp_->log->printf(hovScalars, "KKT_MDS_XYcYd linsys: Lapack for a matrix of size %d\n", n);
-	linSys_ = new hiopLinSolverIndefDenseLapack(n, nlp_);
+        nlp_->log->printf(hovScalars, "KKT_MDS_XYcYd linsys: Lapack for a matrix of size %d\n", n);
+        linSys_ = new hiopLinSolverIndefDenseLapack(n, nlp_);
 #endif
       } else {
-	nlp_->log->printf(hovScalars, "KKT_MDS_XYcYd linsys: Lapack for a matrix of size %d\n", n);
-	linSys_ = new hiopLinSolverIndefDenseLapack(n, nlp_);
+        nlp_->log->printf(hovScalars, "KKT_MDS_XYcYd linsys: Lapack for a matrix of size %d\n", n);
+        linSys_ = new hiopLinSolverIndefDenseLapack(n, nlp_);
       }
     } 
     return linSys_;

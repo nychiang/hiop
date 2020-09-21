@@ -99,7 +99,7 @@ int main(int argc, char **argv)
   magma_init();
 #endif
 
-  std::string mem_space = "default";
+  std::string mem_space = "um";
   hiop::LinearAlgebraFactory::set_mem_space(mem_space);
 
   bool selfCheck, one_call_cons;
