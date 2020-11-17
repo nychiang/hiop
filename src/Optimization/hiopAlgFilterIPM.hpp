@@ -246,7 +246,7 @@ public:
 
 private:
   virtual void outputIteration(int lsStatus, int lsNum);
-  virtual hiopKKTLinSysCompressed* decideAndCreateLinearSystem(hiopNlpFormulation* nlp);
+  virtual hiopKKTLinSys* decideAndCreateLinearSystem(hiopNlpFormulation* nlp);
   virtual hiopFactAcceptor* decideAndCreateFactAcceptor(hiopPDPerturbation* p, hiopNlpFormulation* nlp);
 
   hiopPDPerturbation pd_perturb_;

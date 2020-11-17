@@ -382,11 +382,11 @@ private:
  *  - H is a sparse Hessian matrix
  *
  */
-class hiopKKTLinSysFull: public hiopKKTLinSys
+class hiopKKTLinSysFull: public hiopKKTLinSysCurvCheck
 {
 public:
   hiopKKTLinSysFull(hiopNlpFormulation* nlp)
-    : hiopKKTLinSys(nlp)
+    : hiopKKTLinSysCurvCheck(nlp)
   {}
 
   virtual ~hiopKKTLinSysFull()
@@ -394,10 +394,13 @@ public:
 
   virtual bool update(const hiopIterate* iter,
 		      const hiopVector* grad_f,
-		      const hiopMatrix* Jac_c, const hiopMatrix* Jac_d, hiopMatrix* Hess) = 0;
+		      const hiopMatrix* Jac_c, const hiopMatrix* Jac_d, hiopMatrix* Hess);
 
   virtual bool computeDirections(const hiopResidual* resid, hiopIterate* direction);
 
+  virtual bool updateMatrix(const double& delta_wx, const double& delta_wd,
+                            const double& delta_cc, const double& delta_cd) = 0;  
+  
   virtual bool solve( hiopVector& rx, hiopVector& ryc, hiopVector& ryd, hiopVector& rd,
                       hiopVector& rdl, hiopVector& rdu, hiopVector& rxl, hiopVector& rxu,
                       hiopVector& rsvl, hiopVector& rsvu, hiopVector& rszl, hiopVector& rszu,

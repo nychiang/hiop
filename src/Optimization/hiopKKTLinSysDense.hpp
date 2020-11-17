@@ -123,6 +123,8 @@ public:
     //
     // update linSys system matrix, including IC perturbations
     //
+    nlp_->runStats.kkt.tmUpdateLinsys.start();
+    
     Msys.setToZero();
       
     int alpha = 1.;
@@ -156,6 +158,8 @@ public:
     //write matrix to file if requested
     if(nlp_->options->GetString("write_kkt") == "yes") write_linsys_counter++;
     if(write_linsys_counter>=0) csr_writer.writeMatToFile(Msys, write_linsys_counter); 
+    
+    return true;
   }
 
   virtual bool solveCompressed(hiopVector& rx, hiopVector& ryc, hiopVector& ryd,
@@ -308,6 +312,7 @@ public:
     if(write_linsys_counter>=0) csr_writer.writeMatToFile(Msys, write_linsys_counter);
 
     nlp_->log->write("KKT XDYcYd Linsys (to be factorized):", Msys, hovMatrices);
+    return true;
   }
 
   virtual bool solveCompressed(hiopVector& rx, hiopVector& rd, hiopVector& ryc, hiopVector& ryd,

@@ -194,7 +194,7 @@ int hiopKKTLinSysCurvCheck::factorizeWithCurvCheck()
 
 bool hiopKKTLinSysCurvCheck::factorize()
 {
-  assert(linSys_);
+  assert(nlp_);
 
   //
   //factorization + inertia correction if needed
@@ -1381,6 +1381,24 @@ double hiopKKTLinSysLowRank::solveError(const hiopMatrixDense& M,  const hiopVec
 // hiopKKTLinSysFull
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
+bool hiopKKTLinSysFull::update( const hiopIterate* iter,
+                                const hiopVector* grad_f,
+                                const hiopMatrix* Jac_c, const hiopMatrix* Jac_d,
+                                hiopMatrix* Hess)
+{
+  nlp_->runStats.tmSolverInternal.start();
+
+  //
+  //factorization + inertia correction if needed
+  //
+  bool retval = factorize();
+
+  nlp_->runStats.tmSolverInternal.stop();
+  return retval;
+}
+
+
+
 bool hiopKKTLinSysFull::computeDirections(const hiopResidual* resid,
 						      hiopIterate* dir)
 {

@@ -78,16 +78,13 @@ public:
   hiopKKTLinSysCompressedSparseXYcYd(hiopNlpFormulation* nlp);
   virtual ~hiopKKTLinSysCompressedSparseXYcYd();
 
-  virtual bool update(const hiopIterate* iter,
-		      const hiopVector* grad_f,
-		      const hiopMatrix* Jac_c, const hiopMatrix* Jac_d,
-		      hiopMatrix* Hess);
-
+  virtual bool updateMatrix( const double& delta_wx, const double& delta_wd,
+                     const double& delta_cc, const double& delta_cd);
+                     		      
   virtual bool solveCompressed(hiopVector& rx, hiopVector& ryc, hiopVector& ryd,
 			       hiopVector& dx, hiopVector& dyc, hiopVector& dyd);
 
 protected:
-  hiopLinSolverIndefSparse* linSys_;
   hiopVector *rhs_; //[rx_tilde, ryc_tilde, ryd_tilde]
 
   //
@@ -141,16 +138,13 @@ public:
   hiopKKTLinSysCompressedSparseXDYcYd(hiopNlpFormulation* nlp);
   virtual ~hiopKKTLinSysCompressedSparseXDYcYd();
 
-  virtual bool update(const hiopIterate* iter,
-		      const hiopVector* grad_f,
-		      const hiopMatrix* Jac_c, const hiopMatrix* Jac_d,
-		      hiopMatrix* Hess);
+  virtual bool updateMatrix( const double& delta_wx, const double& delta_wd,
+                     const double& delta_cc, const double& delta_cd);
 
   virtual bool solveCompressed( hiopVector& rx, hiopVector& rd, hiopVector& ryc, hiopVector& ryd,
                                 hiopVector& dx, hiopVector& dd, hiopVector& dyc, hiopVector& dyd);
 
 protected:
-  hiopLinSolverIndefSparse* linSys_;
   hiopVector *rhs_; //[rx_tilde, rd_tilde, ryc, ryd]
 
   //
@@ -215,9 +209,8 @@ public:
 
   virtual ~hiopKKTLinSysSparseFull();
 
-  bool update(const hiopIterate* iter,
-		      const hiopVector* grad_f,
-		      const hiopMatrix* Jac_c, const hiopMatrix* Jac_d, hiopMatrix* Hess);
+  virtual bool updateMatrix( const double& delta_wx, const double& delta_wd,
+                     const double& delta_cc, const double& delta_cd);
 
   bool solve( hiopVector& rx, hiopVector& ryc, hiopVector& ryd, hiopVector& rd,
                       hiopVector& rvl, hiopVector& rvu, hiopVector& rzl, hiopVector& rzu,
@@ -227,7 +220,6 @@ public:
                       hiopVector& dsdl, hiopVector& dsdu, hiopVector& dsxl, hiopVector& dsxu);
 
 protected:
-  hiopLinSolverNonSymSparse* linSys_;
   hiopVector *rhs_; //[rx_tilde, rd_tilde, ryc, ryd]
 
   hiopVector *Hx_, *Hd_;
