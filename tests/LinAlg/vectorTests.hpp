@@ -1542,10 +1542,20 @@ public:
     return x->local_data_host_const()[i];
   }
 
+  /// Returns pointer to local vector data
+  local_ordinal_type getLocalSize(const hiop::hiopVector* x)
+  {
+    return static_cast<local_ordinal_type>(x->get_local_size());
+  }
+
+  /// Returns pointer to local vector data
+  virtual real_type* getLocalData(hiop::hiopVector* x)
+  {
+    return x->local_data();
+  }
+
 protected:
   // Interface to methods specific to vector implementation
-  virtual local_ordinal_type getLocalSize(const hiop::hiopVector* x) = 0;
-  virtual real_type* getLocalData(hiop::hiopVector* x) = 0;
   virtual int verifyAnswer(hiop::hiopVector* x, real_type answer) = 0;
   virtual int verifyAnswer(
       hiop::hiopVector* x,

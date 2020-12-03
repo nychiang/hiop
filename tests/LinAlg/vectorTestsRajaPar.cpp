@@ -64,20 +64,6 @@
 
 namespace hiop { namespace tests {
 
-/// Returns pointer to local vector data
-real_type* VectorTestsRajaPar::getLocalData(hiop::hiopVector* x)
-{
-    hiop::hiopVectorRajaPar* xvec = dynamic_cast<hiop::hiopVectorRajaPar*>(x);
-    return xvec->local_data();
-}
-
-/// Returns size of local data array for vector _x_
-local_ordinal_type VectorTestsRajaPar::getLocalSize(const hiop::hiopVector* x)
-{
-    const hiop::hiopVectorRajaPar* xvec = dynamic_cast<const hiop::hiopVectorRajaPar*>(x);
-    return static_cast<local_ordinal_type>(xvec->get_local_size());
-}
-
 #ifdef HIOP_USE_MPI
 /// Get communicator
 MPI_Comm VectorTestsRajaPar::getMPIComm(hiop::hiopVector* x)
