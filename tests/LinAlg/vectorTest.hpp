@@ -69,8 +69,10 @@
 #include <hiopLinAlgFactory.hpp>
 #include "testBase.hpp"
 
+#ifdef HIOP_USE_RAJA
 #include <umpire/Allocator.hpp>
 #include <umpire/ResourceManager.hpp>
+#endif
 
 namespace hiop { namespace tests {
 
@@ -90,11 +92,11 @@ namespace hiop { namespace tests {
  * and return `false` otherwise.
  *
  */
-class VectorTests : public TestBase
+class VectorTest : public TestBase
 {
 public:
-  VectorTests(){}
-  virtual ~VectorTests(){}
+  VectorTest(){}
+  virtual ~VectorTest(){}
 
   /*
    * this[i] = 0
@@ -1632,9 +1634,12 @@ public:
   /// Wrap new command
   real_type* createLocalBuffer(local_ordinal_type N, real_type val)
   {
+    real_type* buffer;
+  // Use umpire if RAJA is enabled
+#ifdef HIOP_USE_RAJA
     auto& resmgr = umpire::ResourceManager::getInstance();
     umpire::Allocator hal = resmgr.getAllocator("HOST");
-    real_type* buffer = static_cast<real_type*>(hal.allocate(N*sizeof(real_type)));
+    buffer = static_cast<real_type*>(hal.allocate(N*sizeof(real_type)));
 
     // Set buffer elements to the initial value
     for(local_ordinal_type i = 0; i < N; ++i)
@@ -1649,13 +1654,22 @@ public:
     hal.deallocate(buffer);
     return dev_buffer;
 #endif
+    return buffer;
+#endif
 
+    buffer = new real_type[N];
+    for(local_ordinal_type i = 0; i < N; ++i)
+    {
+      buffer[i] = val;
+    }
     return buffer;
   }
 
   /// Wrap delete command
   void deleteLocalBuffer(real_type* buffer)
   {
+    //Use umpire if RAJA is enabled
+#ifdef HIOP_USE_RAJA
 #ifdef HIOP_USE_CUDA
     const std::string hiop_umpire_dev = "DEVICE";
 #else
@@ -1664,8 +1678,10 @@ public:
     auto& resmgr = umpire::ResourceManager::getInstance();
     umpire::Allocator al = resmgr.getAllocator(hiop_umpire_dev);
     al.deallocate(buffer);
+#else
+    delete [] buffer;
+#endif
   }
-
 };
 
 }} // namespace hiop::tests
