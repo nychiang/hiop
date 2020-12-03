@@ -64,6 +64,8 @@
 #include <functional>
 
 #include <hiopVector.hpp>
+#include <hiopVectorPar.hpp>
+#include <hiopVectorRajaPar.hpp>
 #include <hiopLinAlgFactory.hpp>
 #include "testBase.hpp"
 
@@ -1599,9 +1601,34 @@ public:
     return local_fail;
   }
 
+  /// If test fails on any rank set fail flag on all ranks
+  bool reduceReturn(int failures, hiop::hiopVector* x)
+  {
+    int fail = 0;
+
+#ifdef HIOP_USE_MPI
+    if (auto* vecPar = dynamic_cast<hiop::hiopVectorPar*>(x))
+    {
+      MPI_Allreduce(&failures, &fail, 1, MPI_INT, MPI_SUM, vecPar->get_mpi_comm());
+    }
+    else if (auto* vecRajaPar = dynamic_cast<hiop::hiopVectorRajaPar*>(x))
+    {
+      MPI_Allreduce(&failures, &fail, 1, MPI_INT, MPI_SUM, vecRajaPar->get_mpi_comm());
+    }
+    else
+    {
+      //std::cout << "MPIComm not initialised for this vector implimentation.\n"; 
+      return false;
+    }
+#else
+    fail = failures;
+#endif
+
+    return (fail != 0);
+  }
+
 protected:
   // Interface to methods specific to vector implementation
-  virtual bool reduceReturn(int failures, hiop::hiopVector* x) = 0;
   virtual real_type* createLocalBuffer(local_ordinal_type N, real_type val) = 0;
   virtual void deleteLocalBuffer(real_type* buffer) = 0;
 };

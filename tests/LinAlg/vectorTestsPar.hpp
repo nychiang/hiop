@@ -73,7 +73,6 @@ public:
   virtual ~VectorTestsPar(){}
 
 private:
-  virtual bool reduceReturn(int failures, hiop::hiopVector* x) override;
   virtual real_type* createLocalBuffer(local_ordinal_type N, real_type val);
   virtual void deleteLocalBuffer(real_type* buffer);
 
