@@ -1551,15 +1551,53 @@ public:
   /// Returns pointer to local vector data
   virtual real_type* getLocalData(hiop::hiopVector* x)
   {
-    return x->local_data();
+    x->copyFromDev();
+    return x->local_data_host();
+  }
+
+  /// Checks if _local_ vector elements are set to `answer`.
+  int verifyAnswer(hiop::hiopVector* x, real_type answer)
+  {
+    x->copyFromDev();
+    const local_ordinal_type N = getLocalSize(x);
+    auto* xdata = static_cast<const real_type*>(getLocalData(x));
+    
+    int local_fail = 0;
+
+    for(local_ordinal_type i = 0; i < N; ++i)
+    {
+      if(!isEqual(xdata[i], answer))
+      {
+        ++local_fail;
+      }
+    }
+
+    return local_fail;
+  }
+
+  virtual int verifyAnswer(
+      hiop::hiopVector* x,
+      std::function<real_type(local_ordinal_type)> expect)
+  {
+    x->copyFromDev();
+    const local_ordinal_type N = getLocalSize(x);
+    auto* xdata = static_cast<const real_type*>(getLocalData(x));
+    
+    int local_fail = 0;
+
+    for(local_ordinal_type i = 0; i < N; ++i)
+    {
+      if(!isEqual(xdata[i], expect(i)))
+      {
+        ++local_fail;
+      }
+    }
+
+    return local_fail;
   }
 
 protected:
   // Interface to methods specific to vector implementation
-  virtual int verifyAnswer(hiop::hiopVector* x, real_type answer) = 0;
-  virtual int verifyAnswer(
-      hiop::hiopVector* x,
-      std::function<real_type(local_ordinal_type)> expect) = 0;
   virtual bool reduceReturn(int failures, hiop::hiopVector* x) = 0;
   virtual real_type* createLocalBuffer(local_ordinal_type N, real_type val) = 0;
   virtual void deleteLocalBuffer(real_type* buffer) = 0;
