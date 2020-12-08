@@ -8,7 +8,7 @@ set +xv
 
 # If any build configurations fail to build, they will be written here
 # and reported after all build configurations have run
-export logFile="$BUILDDIR/../buildmatrix.log"
+export logFile=${BUILDMATRIX_LOGFILE:-"$BUILDDIR/../buildmatrix.log"}
 
 # Error codes for specific cases
 export success=0
@@ -90,8 +90,6 @@ buildMatrix()
   sparseOpts=(
     '-DHIOP_SPARSE=OFF'
     "-DHIOP_SPARSE=ON \
-      -DHIOP_USE_STRUMPACK=ON \
-      -DHIOP_STRUMPACK_DIR=$MY_STRUMPACK_DIR \
       -DHIOP_METIS_DIR=$MY_METIS_DIR \
       -DHIOP_COINHSL_DIR=$MY_COINHSL_DIR"
     )
