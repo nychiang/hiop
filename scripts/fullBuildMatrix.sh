@@ -43,7 +43,7 @@ reportRuns()
 {
   local numFailures=$(grep -v 'Success' $logFile | wc -l)
   ((numFailures--)) # Don't count the header row
-  echo "Found $numFailures failures."
+  echo "Found $numFailures failures. Full report:"
   cat $logFile
   return $numFailures
 }
@@ -87,9 +87,6 @@ buildMatrix()
     '-DHIOP_USE_MPI=ON'
     '-DHIOP_USE_MPI=OFF'
     )
-
-  # STRUMPACK is not yet installed on our target platforms, so this will not
-  # be a part of the build matrix yet.
   sparseOpts=(
     '-DHIOP_SPARSE=OFF'
     "-DHIOP_SPARSE=ON \
@@ -103,10 +100,12 @@ buildMatrix()
     for gpuOp in "${gpuOpts[@]}"; do
       for kronRedOp in "${kronRedOpts[@]}"; do
         for mpiOp in "${mpiOpts[@]}"; do
-          export cmakeOptions="$baseCmakeOptions $rajaOp $gpuOp $kronRedOp $mpiOp"
-          buildAndTest $doTest
-          logRun $?
-          reportRuns
+          for sparseOp in "${sparseOpts[@]}"; do
+            export cmakeOptions="$baseCmakeOptions $rajaOp $gpuOp $kronRedOp $mpiOp $sparseOp"
+            buildAndTest $doTest
+            logRun $?
+            reportRuns
+          done
         done
       done
     done
