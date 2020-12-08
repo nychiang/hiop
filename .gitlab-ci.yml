@@ -115,6 +115,7 @@ newell_full_build_matrix:
     paths:
       - buildmatrix.csv
     expires_in: 1 week
+    when: always
 # ---
 
 # For Ascent CI
