@@ -114,7 +114,7 @@ newell_full_build_matrix:
   artifacts:
     paths:
       - buildmatrix.csv
-    expires_in: 1 week
+    expire_in: 1 week
     when: always
 # ---
 
