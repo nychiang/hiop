@@ -81,7 +81,7 @@ build_on_marianas:
   variables:
     SLURM_Q: "dl"
     MY_CLUSTER: "marianas"
-    TIMELIMIT: 1:00:00
+    TIMELIMIT: '1:00:00'
   <<: *pnnl_tags_definition
   <<: *pnnl_script_definition
   rules:
@@ -111,6 +111,10 @@ newell_full_build_matrix:
   rules:
     - if: '$CI_PROJECT_ROOT_NAMESPACE == "exasgd"'
       when: manual
+  artifacts:
+    paths:
+      - buildmatrix.csv
+    expires_in: 1 week
 # ---
 
 # For Ascent CI
